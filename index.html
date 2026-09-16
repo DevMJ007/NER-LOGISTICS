@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>NER Logistics Intelligence</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="styles.css" />
+    <style>
+      .login-screen { display:flex; align-items:center; justify-content:center; min-height:100vh; background:linear-gradient(135deg,#fdf0e6,#fff8f0); }
+      .login-card { max-width:420px; width:100%; padding:40px 32px; border:1px solid var(--border); border-radius:12px; background:#fff; box-shadow:var(--shadow); text-align:center; }
+      .login-card h1 { font-family:Georgia,serif; font-size:1.8rem; margin-bottom:4px; }
+      .login-card .brand-row { display:flex; align-items:center; justify-content:center; gap:12px; margin-bottom:24px; }
+      .login-card .brand-icon { width:52px; height:52px; border-radius:12px; display:grid; place-items:center; background:linear-gradient(135deg,var(--terracotta),#d98a68); color:#fffaf4; font-weight:800; font-size:1.1rem; }
+      .login-card label { display:block; text-align:left; margin-bottom:14px; color:var(--muted); font-size:0.8rem; font-weight:700; }
+      .login-card input { width:100%; border:1px solid var(--border); border-radius:var(--radius); min-height:44px; padding:10px 12px; font-size:0.95rem; margin-top:4px; }
+      .login-card .login-btn { width:100%; min-height:48px; border:none; border-radius:var(--radius); background:linear-gradient(135deg,var(--terracotta),#d98a68); color:#fff; font-size:1rem; font-weight:800; cursor:pointer; margin-top:8px; }
+      .login-card .login-btn:hover { opacity:0.92; }
+      .login-card .login-error { color:var(--danger); font-size:0.82rem; margin-top:8px; min-height:20px; }
+      .login-card .divider { border-top:1px solid var(--border); margin:18px 0; }
+      .login-card .google-btn { width:100%; min-height:48px; border:1px solid var(--border); border-radius:var(--radius); background:#fff; font-size:0.9rem; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:10px; }
+      .login-card .google-btn:hover { background:#f9f9f9; }
+      .leaflet-container { z-index:1; }
+      #loginScreen { display:none !important; }
+      #loginScreen.visible { display:flex !important; }
+      .app-shell.hidden { display:none !important; }
+      .app-shell.visible { display:grid !important; }
+      @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(59,130,246,0.6); } 70% { box-shadow: 0 0 0 15px rgba(59,130,246,0); } 100% { box-shadow: 0 0 0 0 rgba(59,130,246,0); } }
+    </style>
+  </head>
+  <body>
+    <!-- LOGIN SCREEN -->
+    <div id="loginScreen" class="login-screen visible">
+      <div class="login-card">
+        <div class="brand-row">
+          <span class="brand-icon">NL</span>
+          <div><h1>NER Logistics</h1><small style="color:var(--muted)">Intelligence Platform</small></div>
+        </div>
+        <form id="loginForm">
+          <label>Email
+            <input type="email" id="loginEmail" name="email" placeholder="you@example.com" required />
+          </label>
+          <label>Password
+            <input type="password" id="loginPassword" name="password" placeholder="Enter password" required />
+          </label>
+          <button class="login-btn" type="submit">Sign In</button>
+          <div class="login-error" id="loginError"></div>
+        </form>
+        <div class="divider"></div>
+        <button class="google-btn" id="googleLoginBtn" type="button">
+          <svg width="20" height="20" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+          Sign in with Google
+        </button>
+        <p style="margin-top:18px;color:var(--muted);font-size:0.75rem">
+          Any email/password works for local login.
+        </p>
+      </div>
+    </div>
+
+    <!-- MAIN APP -->
+    <div id="appShell" class="app-shell hidden">
+      <aside class="sidebar" aria-label="Primary">
+        <a class="brand" href="#dashboard" aria-label="NER Logistics Intelligence">
+          <span class="brand-mark">NL</span>
+          <span><strong>NER Logistics</strong><small>Intelligence</small></span>
+        </a>
+        <nav class="nav-list">
+          <button class="nav-item" data-view="dashboard" type="button"><span class="nav-icon">D</span><span>Dashboard</span></button>
+          <button class="nav-item" data-view="map" type="button"><span class="nav-icon">M</span><span>Live Map</span></button>
+          <button class="nav-item" data-view="weather" type="button"><span class="nav-icon">W</span><span>Weather</span></button>
+          <button class="nav-item" data-view="alerts" type="button"><span class="nav-icon">A</span><span>Alerts</span></button>
+          <button class="nav-item" data-view="report" type="button"><span class="nav-icon">R</span><span>Report</span></button>
+          <button class="nav-item" data-view="emergency" type="button"><span class="nav-icon">E</span><span>Emergency</span></button>
+        </nav>
+        <div class="sidebar-card">
+          <span class="eyebrow">System health</span>
+          <strong id="systemHealthTitle">Checking backend</strong>
+          <p id="systemHealthText">Connecting...</p>
+        </div>
+      </aside>
+
+      <main class="workspace">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">NER Disaster Monitoring System</p>
+            <h1 id="pageTitle">Dashboard</h1>
+          </div>
+          <div class="top-actions">
+            <label class="search-field">
+              <span>Search</span>
+              <input id="globalSearch" type="search" placeholder="Vehicle, route, district" />
+            </label>
+            <div class="auth-panel">
+              <span id="authUser" class="user-chip">Citizen</span>
+              <button id="loginButton" class="ghost-button is-hidden" type="button">Login</button>
+              <button id="logoutButton" class="ghost-button" type="button">Logout</button>
+              <button id="notifyButton" class="ghost-button" type="button">Enable Alerts</button>
+            </div>
+            <span id="liveStatus" class="status-pill">Live</span>
+          </div>
+        </header>
+        <section id="kpiGrid" class="kpi-grid" aria-label="Dashboard metrics"></section>
+        <section id="viewRoot" class="view-root" aria-live="polite"></section>
+      </main>
+    </div>
+
+    <div id="toastHost" class="toast-host" aria-live="assertive"></div>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="config.js"></script>
+    <script src="app.js"></script>
+    <script type="module" src="firebase-client.js"></script>
+  </body>
+</html>
