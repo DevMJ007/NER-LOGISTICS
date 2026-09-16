@@ -906,10 +906,12 @@ function init() {
   window.addEventListener("ner:toast", e => { if (e.detail?.message) toast(e.detail.message); });
 
   const loggedIn = initLogin();
-  if (!loggedIn) { initLoginForm(); return; }
   initLoginForm();
 
-  qsa(".nav-item").forEach(i => i.addEventListener("click", () => setView(i.dataset.view)));
+  function attachNavHandlers() {
+    qsa(".nav-item").forEach(i => i.addEventListener("click", () => setView(i.dataset.view)));
+  }
+  attachNavHandlers();
   window.addEventListener("hashchange", () => { const n = location.hash.replace("#", ""); if (n && n !== state.view) setView(n); });
   qs("#loginButton").addEventListener("click", () => showLogin());
   qs("#notifyButton").addEventListener("click", () => {
