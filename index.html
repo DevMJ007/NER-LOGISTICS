@@ -4,177 +4,415 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>NER Logistics Intelligence</title>
+    <meta name="description" content="AI-Powered Logistics Intelligence for the North Eastern Region" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="styles.css" />
     <style>
-      .login-screen { display:flex; align-items:center; justify-content:center; min-height:100vh; background:linear-gradient(135deg,#fdf0e6,#fff8f0); }
-      .login-card { max-width:420px; width:100%; padding:40px 32px; border:1px solid var(--border); border-radius:12px; background:#fff; box-shadow:var(--shadow); text-align:center; }
-      .login-card h1 { font-family:Georgia,serif; font-size:1.8rem; margin-bottom:4px; }
-      .login-card .brand-row { display:flex; align-items:center; justify-content:center; gap:12px; margin-bottom:24px; }
-      .login-card .brand-icon { width:52px; height:52px; border-radius:12px; display:grid; place-items:center; background:linear-gradient(135deg,var(--terracotta),#d98a68); color:#fffaf4; font-weight:800; font-size:1.1rem; }
-      .login-card label { display:block; text-align:left; margin-bottom:14px; color:var(--muted); font-size:0.8rem; font-weight:700; }
-      .login-card input { width:100%; border:1px solid var(--border); border-radius:var(--radius); min-height:44px; padding:10px 12px; font-size:0.95rem; margin-top:4px; }
-      .login-card .login-btn { width:100%; min-height:48px; border:none; border-radius:var(--radius); background:linear-gradient(135deg,var(--terracotta),#d98a68); color:#fff; font-size:1rem; font-weight:800; cursor:pointer; margin-top:8px; }
-      .login-card .login-btn:hover { opacity:0.92; }
-      .login-card .login-error { color:var(--danger); font-size:0.82rem; margin-top:8px; min-height:20px; }
-      .login-card .divider { border-top:1px solid var(--border); margin:18px 0; }
-      .login-card .google-btn { width:100%; min-height:48px; border:1px solid var(--border); border-radius:var(--radius); background:#fff; font-size:0.9rem; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:10px; }
-      .login-card .google-btn:hover { background:#f9f9f9; }
-      .leaflet-container { z-index:1; }
-      #loginScreen { display:none !important; }
-      #loginScreen.visible { display:flex !important; }
-      #landingPage.hidden { display:none !important; }
+      .login-screen { display:none !important; }
+      .login-screen.visible { display:flex !important; }
+      .landing-page.hidden { display:none !important; }
       .app-shell.hidden { display:none !important; }
       .app-shell.visible { display:grid !important; }
       @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(59,130,246,0.6); } 70% { box-shadow: 0 0 0 15px rgba(59,130,246,0); } 100% { box-shadow: 0 0 0 0 rgba(59,130,246,0); } }
     </style>
   </head>
   <body>
-    <!-- LANDING PAGE -->
-    <div id="landingPage" class="landing-page">
-      <header class="lp-header">
-        <div class="lp-nav">
-          <a class="brand" href="#">
-            <span class="brand-mark">NL</span>
-            <span><strong>NER Logistics</strong><small>Intelligence</small></span>
-          </a>
-          <div class="lp-nav-actions">
-            <button class="ghost-button" onclick="document.getElementById('loginScreen').classList.add('visible');document.getElementById('landingPage').classList.add('hidden')">Login</button>
-            <button class="button" onclick="document.getElementById('loginScreen').classList.add('visible');document.getElementById('landingPage').classList.add('hidden')">Get Started</button>
+
+    <!-- ==================== LANDING PAGE ==================== -->
+    <div id="landingPage" class="lp">
+      <!-- NAV -->
+      <header class="lp-nav" id="lpNav">
+        <div class="lp-nav-inner">
+          <a class="lp-brand" href="#"><span class="lp-brand-mark">NL</span><span class="lp-brand-text"><strong>NER Logistics</strong><small>Intelligence</small></span></a>
+          <nav class="lp-nav-links" id="lpNavLinks">
+            <a href="#platform">Platform</a>
+            <a href="#features">Features</a>
+            <a href="#technology">Technology</a>
+            <a href="#how-it-works">How It Works</a>
+          </nav>
+          <div class="lp-nav-right">
+            <a href="#" class="btn btn-primary" onclick="event.preventDefault();document.getElementById('loginScreen').classList.add('visible');document.getElementById('landingPage').classList.add('hidden')">Open Dashboard</a>
+            <button class="lp-hamburger" id="lpHamburger" aria-label="Menu"><span></span><span></span><span></span></button>
           </div>
         </div>
       </header>
 
-      <section class="lp-hero">
-        <div class="lp-hero-content">
-          <p class="eyebrow">NER Disaster Monitoring System</p>
-          <h1 class="lp-title">Protecting Northeast India.<br>One Alert at a Time.</h1>
-          <p class="lp-subtitle">Real-time flood monitoring, landslide detection, and AI-powered disaster risk analysis for all 8 northeastern states. Stay safe, stay informed.</p>
-          <div class="lp-hero-actions">
-            <button class="button lp-cta" onclick="document.getElementById('loginScreen').classList.add('visible');document.getElementById('landingPage').classList.add('hidden')">Start Monitoring</button>
-            <a href="#features" class="ghost-button">Learn More</a>
+      <!-- HERO -->
+      <section class="lp-hero" id="hero">
+        <div class="lp-hero-inner">
+          <div class="lp-hero-text">
+            <span class="lp-badge">AI + GIS + REAL-TIME LOGISTICS</span>
+            <h1 class="lp-hero-title">Know What's Accessible.<br>Know What's At Risk.<br>Move What Matters.</h1>
+            <p class="lp-hero-desc">NER Logistics Intelligence combines weather, flood data, satellite observations, field reports, GPS tracking and AI-powered risk analysis to help logistics teams make safer routing decisions across the North Eastern Region.</p>
+            <div class="lp-hero-btns">
+              <a href="#" class="btn btn-primary btn-lg" onclick="event.preventDefault();document.getElementById('loginScreen').classList.add('visible');document.getElementById('landingPage').classList.add('hidden')">Open Intelligence Dashboard</a>
+              <a href="#how-it-works" class="btn btn-ghost btn-lg">Explore How It Works</a>
+            </div>
+            <div class="lp-live-indicator"><span class="lp-live-dot"></span> Real-time logistics intelligence</div>
           </div>
-          <div class="lp-stats">
-            <div class="lp-stat"><strong>8</strong><small>States Covered</small></div>
-            <div class="lp-stat"><strong>24/7</strong><small>Live Monitoring</small></div>
-            <div class="lp-stat"><strong>AI</strong><small>Risk Analysis</small></div>
-          </div>
-        </div>
-        <div class="lp-hero-visual">
-          <div class="lp-map-preview">
-            <div class="lp-dot lp-dot-1"></div>
-            <div class="lp-dot lp-dot-2"></div>
-            <div class="lp-dot lp-dot-3"></div>
-            <div class="lp-dot lp-dot-4"></div>
-            <div class="lp-dot lp-dot-5"></div>
-            <div class="lp-pulse lp-pulse-1"></div>
-            <div class="lp-pulse lp-pulse-2"></div>
-          </div>
-        </div>
-      </section>
-
-      <section id="features" class="lp-features">
-        <p class="eyebrow" style="text-align:center">Features</p>
-        <h2 style="text-align:center;margin-bottom:32px">Everything You Need to Stay Safe</h2>
-        <div class="lp-feature-grid">
-          <article class="lp-feature-card">
-            <div class="lp-feature-icon">W</div>
-            <h3>Live Weather Data</h3>
-            <p>Real-time temperature, rainfall, wind speed, and humidity from Open-Meteo API. Updated every 5 minutes.</p>
-          </article>
-          <article class="lp-feature-card">
-            <div class="lp-feature-icon">F</div>
-            <h3>Flood Monitoring</h3>
-            <p>Hydrological flood index tracking across major rivers and tributaries in Northeast India.</p>
-          </article>
-          <article class="lp-feature-card">
-            <div class="lp-feature-icon">A</div>
-            <h3>AI Risk Engine</h3>
-            <p>Machine learning analyzes weather, satellite, and incident data to predict disaster risk levels.</p>
-          </article>
-          <article class="lp-feature-card">
-            <div class="lp-feature-icon">M</div>
-            <h3>Interactive Map</h3>
-            <p>Satellite imagery with real-time incident markers, flood zones, and risk overlays.</p>
-          </article>
-          <article class="lp-feature-card">
-            <div class="lp-feature-icon">R</div>
-            <h3>Citizen Reports</h3>
-            <p>Report floods, landslides, and road damage directly from your phone. Your reports power the AI.</p>
-          </article>
-          <article class="lp-feature-card">
-            <div class="lp-feature-icon">E</div>
-            <h3>Emergency Alerts</h3>
-            <p>Automatic notifications when risk levels change. Critical alerts delivered instantly.</p>
-          </article>
-        </div>
-      </section>
-
-      <section class="lp-how">
-        <p class="eyebrow" style="text-align:center">How It Works</p>
-        <h2 style="text-align:center;margin-bottom:32px">Three Steps to Safety</h2>
-        <div class="lp-steps">
-          <div class="lp-step">
-            <div class="lp-step-num">1</div>
-            <h3>Sign Up</h3>
-            <p>Create an account in seconds. Any email and password works.</p>
-          </div>
-          <div class="lp-step-arrow">→</div>
-          <div class="lp-step">
-            <div class="lp-step-num">2</div>
-            <h3>Allow Location</h3>
-            <p>Enable location access for personalized risk alerts for your area.</p>
-          </div>
-          <div class="lp-step-arrow">→</div>
-          <div class="lp-step">
-            <div class="lp-step-num">3</div>
-            <h3>Stay Informed</h3>
-            <p>Get real-time dashboards, AI analysis, and emergency notifications.</p>
+          <div class="lp-hero-map">
+            <div class="lp-map-visual">
+              <svg viewBox="0 0 600 400" class="lp-map-svg" aria-label="NER Region Map">
+                <defs>
+                  <linearGradient id="roadGrad" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#2E8B57"/><stop offset="60%" stop-color="#2E8B57"/><stop offset="60%" stop-color="#D92D20"/><stop offset="100%" stop-color="#D92D20"/></linearGradient>
+                  <linearGradient id="altGrad" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#FF771C"/><stop offset="100%" stop-color="#FF771C"/></linearGradient>
+                </defs>
+                <!-- Region outline -->
+                <path d="M120,80 L280,60 L380,90 L450,70 L520,100 L540,180 L500,260 L420,300 L340,320 L250,310 L160,280 L100,220 L90,150 Z" fill="rgba(255,117,28,0.06)" stroke="rgba(255,117,28,0.2)" stroke-width="1.5"/>
+                <!-- Districts -->
+                <path d="M140,100 L220,85 L240,140 L180,160 Z" fill="rgba(255,117,28,0.08)" stroke="rgba(255,117,28,0.15)" stroke-width="1"/>
+                <path d="M250,80 L340,70 L360,130 L280,140 Z" fill="rgba(255,117,28,0.06)" stroke="rgba(255,117,28,0.12)" stroke-width="1"/>
+                <path d="M370,90 L450,80 L460,150 L380,160 Z" fill="rgba(255,117,28,0.08)" stroke="rgba(255,117,28,0.15)" stroke-width="1"/>
+                <path d="M200,170 L300,155 L320,230 L220,240 Z" fill="rgba(255,117,28,0.06)" stroke="rgba(255,117,28,0.12)" stroke-width="1"/>
+                <path d="M340,160 L430,145 L440,220 L360,235 Z" fill="rgba(255,117,28,0.08)" stroke="rgba(255,117,28,0.15)" stroke-width="1"/>
+                <!-- Main route (Imphal to Aizawl) -->
+                <path d="M180,130 C220,140 260,180 300,200 C330,215 340,240 350,250" fill="none" stroke="url(#roadGrad)" stroke-width="3" stroke-linecap="round" class="lp-route-line"/>
+                <!-- Alternate route -->
+                <path d="M180,130 C200,160 240,200 280,230 C310,250 340,260 350,250" fill="none" stroke="url(#altGrad)" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="8,6" class="lp-alt-route" opacity="0.7"/>
+                <!-- Blocked marker -->
+                <rect x="268" y="178" width="28" height="16" rx="3" fill="#D92D20"/>
+                <text x="282" y="190" text-anchor="middle" fill="#fff" font-size="8" font-weight="700">BLOCKED</text>
+                <!-- Vehicle marker -->
+                <circle cx="220" cy="155" r="14" fill="#171717" stroke="#fff" stroke-width="2"/>
+                <text x="220" y="158" text-anchor="middle" fill="#fff" font-size="7" font-weight="700">T204</text>
+                <!-- Incident marker -->
+                <circle cx="280" cy="200" r="11" fill="#D92D20" stroke="#fff" stroke-width="2"/>
+                <text x="280" y="203" text-anchor="middle" fill="#fff" font-size="8" font-weight="700">!</text>
+                <!-- Alternate route marker -->
+                <circle cx="350" cy="250" r="12" fill="#FF771C" stroke="#fff" stroke-width="2"/>
+                <text x="350" y="253" text-anchor="middle" fill="#fff" font-size="7" font-weight="700">B</text>
+              </svg>
+              <!-- Vehicle Panel -->
+              <div class="lp-map-panel lp-vehicle-panel">
+                <div class="lp-panel-header"><span class="lp-panel-dot" style="background:#2E8B57"></span> TRUCK-204 <span class="lp-status-badge lp-status-active">ON ROUTE</span></div>
+                <div class="lp-panel-row"><small>Route:</small><strong>Imphal → Aizawl</strong></div>
+                <div class="lp-panel-row"><small>Risk:</small><span class="lp-risk-moderate">Moderate</span></div>
+              </div>
+              <!-- Incident Panel -->
+              <div class="lp-map-panel lp-incident-panel">
+                <div class="lp-panel-header"><span class="lp-panel-dot" style="background:#D92D20"></span> Landslide Reported</div>
+                <div class="lp-panel-row"><small>Severity:</small><span class="lp-risk-high">HIGH</span></div>
+                <div class="lp-panel-row"><small>Road:</small><strong>NH-37 Segment</strong></div>
+              </div>
+              <!-- Route Panel -->
+              <div class="lp-map-panel lp-route-panel">
+                <div class="lp-panel-header"><span class="lp-panel-dot" style="background:#FF771C"></span> Alternate Route Found</div>
+                <div class="lp-panel-row"><small>Time:</small><strong>12 min longer</strong></div>
+                <div class="lp-panel-row"><small>Risk:</small><strong style="color:#2E8B57">42% lower risk</strong></div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
-      <section class="lp-cta-section">
-        <h2>Ready to Monitor Disasters?</h2>
-        <p>Join citizens across Northeast India who are staying informed and staying safe.</p>
-        <button class="button lp-cta" onclick="document.getElementById('loginScreen').classList.add('visible');document.getElementById('landingPage').classList.add('hidden')">Get Started Free</button>
+      <!-- LIVE STATUS STRIP -->
+      <section class="lp-status-strip">
+        <div class="lp-status-inner">
+          <div class="lp-stat-card"><span class="lp-stat-num" data-target="128">0</span><span class="lp-stat-label">Active Vehicles</span></div>
+          <div class="lp-stat-card"><span class="lp-stat-num" data-target="23">0</span><span class="lp-stat-label">Active Incidents</span></div>
+          <div class="lp-stat-card"><span class="lp-stat-num" data-target="17">0</span><span class="lp-stat-label">Risk Corridors</span></div>
+          <div class="lp-stat-card"><span class="lp-stat-num lp-stat-pct" data-target="94">0</span><span class="lp-stat-label">Routes Accessible</span></div>
+        </div>
       </section>
 
+      <!-- THE PROBLEM -->
+      <section class="lp-section lp-problem" id="platform">
+        <div class="lp-section-inner">
+          <span class="lp-section-badge">THE CHALLENGE</span>
+          <h2 class="lp-section-title">Logistics Doesn't Stop When Conditions Change.</h2>
+          <p class="lp-section-desc">The North Eastern Region faces unique logistics challenges. Landslides, floods, heavy rainfall, road damage, and difficult terrain can disrupt supply chains without warning.</p>
+          <div class="lp-flow">
+            <div class="lp-flow-items">
+              <div class="lp-flow-item"><div class="lp-flow-icon">W</div><span>Weather</span></div>
+              <div class="lp-flow-item"><div class="lp-flow-icon">R</div><span>Road Conditions</span></div>
+              <div class="lp-flow-item"><div class="lp-flow-icon">F</div><span>Field Reports</span></div>
+              <div class="lp-flow-item"><div class="lp-flow-icon">S</div><span>Satellite Data</span></div>
+              <div class="lp-flow-item"><div class="lp-flow-icon">V</div><span>Vehicle Movement</span></div>
+            </div>
+            <div class="lp-flow-arrow">↓</div>
+            <div class="lp-flow-result"><strong>One Operational Picture</strong><small>Complete real-time visibility across the region</small></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- HOW IT WORKS -->
+      <section class="lp-section lp-how-it-works" id="how-it-works">
+        <div class="lp-section-inner">
+          <span class="lp-section-badge">WORKFLOW</span>
+          <h2 class="lp-section-title">From Raw Data to the Right Decision.</h2>
+          <div class="lp-process">
+            <div class="lp-process-step">
+              <div class="lp-process-num">01</div>
+              <h3>Collect</h3>
+              <ul><li>Weather</li><li>Flood</li><li>GPS</li><li>Field Reports</li><li>Satellite</li><li>Road Data</li></ul>
+            </div>
+            <div class="lp-process-arrow">→</div>
+            <div class="lp-process-step">
+              <div class="lp-process-num">02</div>
+              <h3>Analyze</h3>
+              <ul><li>GIS Engine</li><li>PostGIS</li><li>AI / ML</li><li>Risk Scoring</li></ul>
+            </div>
+            <div class="lp-process-arrow">→</div>
+            <div class="lp-process-step">
+              <div class="lp-process-num">03</div>
+              <h3>Understand</h3>
+              <ul><li>Risk Score</li><li>Blocked Corridors</li><li>Disruption Probability</li></ul>
+            </div>
+            <div class="lp-process-arrow">→</div>
+            <div class="lp-process-step">
+              <div class="lp-process-num">04</div>
+              <h3>Act</h3>
+              <ul><li>Alternate Route</li><li>Vehicle Update</li><li>Alert</li><li>Emergency Response</li></ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- FEATURES -->
+      <section class="lp-section lp-features-section" id="features">
+        <div class="lp-section-inner">
+          <span class="lp-section-badge">CAPABILITIES</span>
+          <h2 class="lp-section-title">Built for Real-World Logistics Intelligence</h2>
+          <div class="lp-feature-grid">
+            <article class="lp-fcard"><div class="lp-fcard-icon">M</div><h3>Live GIS Intelligence</h3><p>Monitor roads, districts, vehicles, incidents and risk zones from a unified operational map.</p></article>
+            <article class="lp-fcard"><div class="lp-fcard-icon">A</div><h3>AI Risk Analysis</h3><p>Combine weather, flood, road and field signals to identify potentially high-risk logistics corridors.</p></article>
+            <article class="lp-fcard"><div class="lp-fcard-icon">R</div><h3>Smart Route Decisions</h3><p>Evaluate route accessibility and risk instead of choosing routes using distance alone.</p></article>
+            <article class="lp-fcard"><div class="lp-fcard-icon">G</div><h3>GPS Vehicle Tracking</h3><p>Track essential-commodity vehicles and monitor movement, delays and route progress.</p></article>
+            <article class="lp-fcard"><div class="lp-fcard-icon">F</div><h3>Field Intelligence</h3><p>Allow field officers to submit geo-tagged incidents, road conditions and photographs.</p></article>
+            <article class="lp-fcard"><div class="lp-fcard-icon">S</div><h3>Satellite Intelligence</h3><p>Use Copernicus Sentinel observations as an additional source of environmental information.</p></article>
+            <article class="lp-fcard"><div class="lp-fcard-icon">N</div><h3>Real-Time Alerts</h3><p>Push important road, risk and emergency updates to responsible users instantly.</p></article>
+            <article class="lp-fcard"><div class="lp-fcard-icon">D</div><h3>District Intelligence</h3><p>Understand accessibility, incidents, supply movement and risk at district level.</p></article>
+          </div>
+        </div>
+      </section>
+
+      <!-- INTERACTIVE ROUTE DEMO -->
+      <section class="lp-section lp-route-demo">
+        <div class="lp-section-inner">
+          <span class="lp-section-badge">INTELLIGENCE IN ACTION</span>
+          <h2 class="lp-section-title">What Happens When a Road Becomes Unsafe?</h2>
+          <div class="lp-demo-container">
+            <div class="lp-demo-scenario" id="lpDemoScenario">
+              <div class="lp-demo-route lp-demo-route-a" id="lpRouteA">
+                <div class="lp-demo-route-header"><span class="lp-demo-route-name">Route A</span><span class="lp-status-badge lp-status-active">ACTIVE</span></div>
+                <div class="lp-demo-route-stats"><span>120 km</span><span>3h 10m</span><span class="lp-risk-low">LOW RISK</span></div>
+                <div class="lp-demo-route-bar"><div class="lp-demo-route-fill" style="width:35%"></div></div>
+              </div>
+              <div class="lp-demo-events" id="lpDemoEvents">
+                <div class="lp-demo-event" data-step="1"><span class="lp-demo-event-icon lp-event-weather">W</span><div><strong>Heavy Rainfall Detected</strong><small>Rainfall: 85mm in last 6 hours</small></div></div>
+                <div class="lp-demo-event" data-step="2"><span class="lp-demo-event-icon lp-event-incident">!</span><div><strong>New Landslide Report</strong><small>NH-37, Imphal–Aizawl segment</small></div></div>
+                <div class="lp-demo-event" data-step="3"><span class="lp-demo-event-icon lp-event-blocked">✕</span><div><strong>Road Marked BLOCKED</strong><small>Field officer verified closure</small></div></div>
+              </div>
+              <div class="lp-demo-ai">
+                <div class="lp-demo-ai-icon">AI</div>
+                <div><strong>AI Route Analysis</strong><small>Evaluating 3 alternate corridors...</small></div>
+              </div>
+              <div class="lp-demo-route lp-demo-route-b" id="lpRouteB" style="opacity:0.4">
+                <div class="lp-demo-route-header"><span class="lp-demo-route-name">Route B</span><span class="lp-status-badge" style="background:#FFF5E8;color:#FF771C">RECOMMENDED</span></div>
+                <div class="lp-demo-route-stats"><span>137 km</span><span>3h 32m</span><span class="lp-risk-low">LOWER RISK</span></div>
+                <div class="lp-demo-route-bar"><div class="lp-demo-route-fill lp-demo-route-fill-b" style="width:0%"></div></div>
+                <button class="btn btn-primary" style="margin-top:12px;opacity:0;transition:opacity 300ms" id="lpUseRoute">Use Safer Route</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- DATA SOURCES -->
+      <section class="lp-section lp-data-sources" id="technology">
+        <div class="lp-section-inner">
+          <span class="lp-section-badge">DATA PIPELINE</span>
+          <h2 class="lp-section-title">One Platform. Multiple Intelligence Sources.</h2>
+          <div class="lp-source-grid">
+            <div class="lp-source-card"><div class="lp-source-logo">C</div><strong>Copernicus Sentinel-1</strong><small>Radar observation for terrain monitoring</small></div>
+            <div class="lp-source-card"><div class="lp-source-logo">C</div><strong>Copernicus Sentinel-2</strong><small>Multispectral environmental analysis</small></div>
+            <div class="lp-source-card"><div class="lp-source-logo">O</div><strong>Open-Meteo</strong><small>Real-time weather and flood API</small></div>
+            <div class="lp-source-card"><div class="lp-source-logo">F</div><strong>Flood Data</strong><small>Hydrological river discharge monitoring</small></div>
+            <div class="lp-source-card"><div class="lp-source-logo">O</div><strong>OpenStreetMap</strong><small>Road network and district boundaries</small></div>
+            <div class="lp-source-card"><div class="lp-source-logo">R</div><strong>OSRM Routing</strong><small>Distance, ETA and route calculation</small></div>
+            <div class="lp-source-card"><div class="lp-source-logo">G</div><strong>GPS Tracking</strong><small>Real-time vehicle position updates</small></div>
+            <div class="lp-source-card"><div class="lp-source-logo">P</div><strong>Field Reports</strong><small>Geo-tagged incident submissions</small></div>
+            <div class="lp-source-card"><div class="lp-source-logo">D</div><strong>PostGIS</strong><small>Spatial database for geospatial queries</small></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SATELLITE SECTION -->
+      <section class="lp-section lp-satellite">
+        <div class="lp-section-inner">
+          <div class="lp-sat-content">
+            <span class="lp-section-badge" style="border-color:rgba(255,255,255,0.3);color:#ccc">SATELLITE INTELLIGENCE</span>
+            <h2 class="lp-section-title" style="color:#fff">See Beyond the Road.</h2>
+            <p style="color:rgba(255,255,255,0.7);max-width:520px;margin-bottom:24px">Satellite observations provide an additional layer of environmental intelligence for areas where ground-level information may be limited.</p>
+            <div class="lp-sat-cards">
+              <div class="lp-sat-card"><div class="lp-sat-scan"></div><strong>SENTINEL-1</strong><small>Radar Observation</small><span class="lp-sat-status">● Active</span></div>
+              <div class="lp-sat-card"><div class="lp-sat-scan lp-sat-scan-delay"></div><strong>SENTINEL-2</strong><small>Multispectral Observation</small><span class="lp-sat-status">● Active</span></div>
+            </div>
+            <small style="color:rgba(255,255,255,0.5);margin-top:16px;display:block">Copernicus Data Space</small>
+          </div>
+          <div class="lp-sat-visual">
+            <div class="lp-sat-grid">
+              <div class="lp-sat-cell" style="animation-delay:0s"></div>
+              <div class="lp-sat-cell" style="animation-delay:0.3s"></div>
+              <div class="lp-sat-cell" style="animation-delay:0.6s"></div>
+              <div class="lp-sat-cell" style="animation-delay:0.9s"></div>
+              <div class="lp-sat-cell" style="animation-delay:1.2s"></div>
+              <div class="lp-sat-cell" style="animation-delay:1.5s"></div>
+              <div class="lp-sat-cell" style="animation-delay:1.8s"></div>
+              <div class="lp-sat-cell" style="animation-delay:2.1s"></div>
+              <div class="lp-sat-cell" style="animation-delay:2.4s"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- FIELD OFFICER -->
+      <section class="lp-section lp-field">
+        <div class="lp-section-inner">
+          <span class="lp-section-badge">FIELD INTELLIGENCE</span>
+          <h2 class="lp-section-title">Intelligence From the Ground.</h2>
+          <div class="lp-field-layout">
+            <div class="lp-phone">
+              <div class="lp-phone-notch"></div>
+              <div class="lp-phone-screen">
+                <div class="lp-phone-header">Field Report</div>
+                <div class="lp-phone-field"><label>Incident</label><div class="lp-phone-value">Landslide</div></div>
+                <div class="lp-phone-field"><label>Severity</label><div class="lp-phone-value" style="color:#D92D20;font-weight:700">High</div></div>
+                <div class="lp-phone-field"><label>Location</label><div class="lp-phone-value">24.817°N, 93.937°E</div><small style="color:#666">Auto-detected via GPS</small></div>
+                <div class="lp-phone-field"><label>Photo</label><div class="lp-phone-value">photo_2026.jpg</div></div>
+                <div class="lp-phone-field"><label>Status</label><div class="lp-phone-value" style="color:#FF771C">Pending Sync</div></div>
+                <button class="btn btn-primary" style="width:100%;margin-top:8px;font-size:0.85rem">Submit Report</button>
+              </div>
+            </div>
+            <div class="lp-phone-status">
+              <div class="lp-phone-status-icon" style="background:#2E8B57;color:#fff;width:48px;height:48px;border-radius:50%;display:grid;place-items:center;font-size:1.2rem;margin-bottom:12px">✓</div>
+              <h3>Report Synced</h3>
+              <p style="color:#666">Offline-first design ensures field reports are captured even without connectivity. Data syncs automatically when connection is restored.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- EMERGENCY MODE -->
+      <section class="lp-section lp-emergency">
+        <div class="lp-section-inner">
+          <span class="lp-section-badge" style="background:rgba(217,45,32,0.1);border-color:rgba(217,45,32,0.3);color:#D92D20">EMERGENCY RESPONSE</span>
+          <h2 class="lp-section-title">When Every Minute Matters.</h2>
+          <div class="lp-emergency-grid">
+            <div class="lp-em-card lp-em-critical"><span class="lp-em-num">3</span><span class="lp-em-label">Critical Incidents</span></div>
+            <div class="lp-em-card lp-em-blocked"><span class="lp-em-num">7</span><span class="lp-em-label">Blocked Roads</span></div>
+            <div class="lp-em-card lp-em-vehicles"><span class="lp-em-num">12</span><span class="lp-em-label">Emergency Vehicles</span></div>
+            <div class="lp-em-card lp-em-safe"><span class="lp-em-num">5</span><span class="lp-em-label">Safe Corridors</span></div>
+          </div>
+          <div style="text-align:center;margin-top:20px">
+            <span class="lp-status-badge lp-status-active">Emergency Route Available</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ARCHITECTURE -->
+      <section class="lp-section lp-arch">
+        <div class="lp-section-inner">
+          <span class="lp-section-badge">SYSTEM ARCHITECTURE</span>
+          <h2 class="lp-section-title">Built on a Modern Intelligence Stack</h2>
+          <div class="lp-arch-flow">
+            <div class="lp-arch-col">
+              <div class="lp-arch-node">Weather</div>
+              <div class="lp-arch-node">Flood</div>
+              <div class="lp-arch-node">Satellite</div>
+              <div class="lp-arch-node">GPS</div>
+              <div class="lp-arch-node">Field Reports</div>
+              <div class="lp-arch-node">Road Data</div>
+            </div>
+            <div class="lp-arch-arrow-col"><div class="lp-arch-line"></div></div>
+            <div class="lp-arch-col" style="justify-content:center"><div class="lp-arch-node lp-arch-highlight">Data Ingestion</div></div>
+            <div class="lp-arch-arrow-col"><div class="lp-arch-line"></div></div>
+            <div class="lp-arch-col" style="justify-content:center"><div class="lp-arch-node lp-arch-highlight">FastAPI</div></div>
+            <div class="lp-arch-arrow-col"><div class="lp-arch-line"></div></div>
+            <div class="lp-arch-col" style="justify-content:center"><div class="lp-arch-node lp-arch-highlight">PostgreSQL + PostGIS</div></div>
+            <div class="lp-arch-arrow-col"><div class="lp-arch-line"></div></div>
+            <div class="lp-arch-col" style="justify-content:center"><div class="lp-arch-node lp-arch-highlight">AI / Risk Engine</div></div>
+            <div class="lp-arch-arrow-col"><div class="lp-arch-line"></div></div>
+            <div class="lp-arch-col" style="justify-content:center"><div class="lp-arch-node lp-arch-highlight">Route Optimization</div></div>
+            <div class="lp-arch-arrow-col"><div class="lp-arch-line"></div></div>
+            <div class="lp-arch-col" style="justify-content:center"><div class="lp-arch-node lp-arch-highlight">Dashboard + Alerts</div></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECURITY -->
+      <section class="lp-section lp-security">
+        <div class="lp-section-inner" style="max-width:700px;text-align:center">
+          <span class="lp-section-badge">SECURITY</span>
+          <h2 class="lp-section-title">Built With Security in Mind</h2>
+          <div class="lp-security-grid">
+            <div class="lp-sec-item">Firebase Authentication</div>
+            <div class="lp-sec-item">Role-Based Access</div>
+            <div class="lp-sec-item">Server-Side Credentials</div>
+            <div class="lp-sec-item">Secure API Communication</div>
+            <div class="lp-sec-item">Protected Database Access</div>
+            <div class="lp-sec-item">Validated Field Uploads</div>
+            <div class="lp-sec-item">Audit Information</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- WHO IT IS FOR -->
+      <section class="lp-section lp-roles">
+        <div class="lp-section-inner">
+          <span class="lp-section-badge">WHO USES IT</span>
+          <h2 class="lp-section-title">Built for Every Level of Response</h2>
+          <div class="lp-role-grid">
+            <article class="lp-role-card"><div class="lp-role-icon">G</div><h3>Government & Control Rooms</h3><p>Unified operational view of all logistics corridors, incidents and risk levels across the region.</p></article>
+            <article class="lp-role-card"><div class="lp-role-icon">D</div><h3>District Officials</h3><p>District-level intelligence on road accessibility, incident status and supply movement.</p></article>
+            <article class="lp-role-card"><div class="lp-role-icon">F</div><h3>Field Officers</h3><p>Submit geo-tagged incident reports, road conditions and photographs from the ground.</p></article>
+            <article class="lp-role-card"><div class="lp-role-icon">L</div><h3>Logistics Operators</h3><p>Track vehicles, evaluate route risk and make informed routing decisions.</p></article>
+            <article class="lp-role-card"><div class="lp-role-icon">E</div><h3>Emergency Teams</h3><p>Activate emergency protocols, broadcast alerts and coordinate rapid response.</p></article>
+          </div>
+        </div>
+      </section>
+
+      <!-- FINAL CTA -->
+      <section class="lp-section lp-final-cta">
+        <div class="lp-section-inner" style="text-align:center;max-width:700px">
+          <h2 class="lp-section-title">Turn Disruption Into a Decision.</h2>
+          <p style="color:#666;margin-bottom:28px;font-size:1.05rem">Monitor conditions. Understand risk. Choose safer routes. Keep essential supplies moving.</p>
+          <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+            <a href="#" class="btn btn-primary btn-lg" onclick="event.preventDefault();document.getElementById('loginScreen').classList.add('visible');document.getElementById('landingPage').classList.add('hidden')">Open Dashboard</a>
+            <a href="#technology" class="btn btn-ghost btn-lg">View System Architecture</a>
+          </div>
+        </div>
+      </section>
+
+      <!-- FOOTER -->
       <footer class="lp-footer">
         <div class="lp-footer-inner">
-          <div>
-            <a class="brand" href="#">
-              <span class="brand-mark">NL</span>
-              <span><strong>NER Logistics</strong><small>Intelligence</small></span>
-            </a>
-            <p class="muted" style="margin-top:8px;max-width:280px">Real-time disaster monitoring for Northeast India. Powered by AI.</p>
+          <div class="lp-footer-brand">
+            <a class="lp-brand" href="#"><span class="lp-brand-mark">NL</span><span class="lp-brand-text"><strong>NER Logistics</strong><small>Intelligence</small></span></a>
+            <p style="color:#666;margin-top:8px;font-size:0.88rem;max-width:300px">AI-powered logistics intelligence for the North Eastern Region.</p>
           </div>
           <div class="lp-footer-links">
-            <strong>Coverage</strong>
-            <small>Arunachal Pradesh</small>
-            <small>Assam</small>
-            <small>Manipur</small>
-            <small>Meghalaya</small>
-            <small>Mizoram</small>
-            <small>Nagaland</small>
-            <small>Sikkim</small>
-            <small>Tripura</small>
+            <strong>Platform</strong>
+            <a href="#">Dashboard</a>
+            <a href="#features">Features</a>
+            <a href="#how-it-works">How It Works</a>
+            <a href="#technology">Technology</a>
           </div>
           <div class="lp-footer-links">
-            <strong>Data Sources</strong>
-            <small>Open-Meteo API</small>
-            <small>Copernicus Sentinel</small>
-            <small>OpenStreetMap</small>
-            <small>OSRM Routing</small>
+            <strong>Resources</strong>
+            <a href="#">Documentation</a>
+            <a href="#">API Reference</a>
+            <a href="#">Contact</a>
           </div>
         </div>
         <div class="lp-footer-bottom">
-          <small>Built for disaster resilience in Northeast India</small>
+          <span>Built for SIH 2026</span>
+          <span>NER Logistics Intelligence</span>
         </div>
       </footer>
     </div>
 
-    <!-- LOGIN SCREEN -->
+    <!-- ==================== LOGIN SCREEN ==================== -->
     <div id="loginScreen" class="login-screen">
       <div class="login-card">
         <div class="brand-row">
@@ -202,7 +440,7 @@
       </div>
     </div>
 
-    <!-- MAIN APP -->
+    <!-- ==================== MAIN APP ==================== -->
     <div id="appShell" class="app-shell hidden">
       <aside class="sidebar" aria-label="Primary">
         <a class="brand" href="#dashboard" aria-label="NER Logistics Intelligence">
@@ -223,7 +461,6 @@
           <p id="systemHealthText">Connecting...</p>
         </div>
       </aside>
-
       <main class="workspace">
         <header class="topbar">
           <div>

@@ -942,3 +942,71 @@ function init() {
 }
 
 init();
+
+// ========== LANDING PAGE ANIMATIONS ==========
+(function() {
+  const hamburger = document.getElementById("lpHamburger");
+  const navLinks = document.getElementById("lpNavLinks");
+  if (hamburger && navLinks) {
+    hamburger.addEventListener("click", function() { navLinks.classList.toggle("open"); });
+  }
+
+  // Counter animation
+  function animateCounters() {
+    document.querySelectorAll(".lp-stat-num[data-target]").forEach(function(el) {
+      if (el.dataset.animated) return;
+      var rect = el.getBoundingClientRect();
+      if (rect.top > window.innerHeight || rect.bottom < 0) return;
+      el.dataset.animated = "1";
+      var target = parseInt(el.dataset.target, 10);
+      var suffix = el.classList.contains("lp-stat-pct") ? "%" : "";
+      var start = 0;
+      var duration = 1200;
+      var startTime = null;
+      function step(ts) {
+        if (!startTime) startTime = ts;
+        var p = Math.min((ts - startTime) / duration, 1);
+        var eased = 1 - Math.pow(1 - p, 3);
+        el.textContent = Math.floor(eased * target) + suffix;
+        if (p < 1) requestAnimationFrame(step);
+      }
+      requestAnimationFrame(step);
+    });
+  }
+
+  // Route demo animation
+  function animateRouteDemo() {
+    var scenario = document.getElementById("lpDemoScenario");
+    if (!scenario || scenario.dataset.animated) return;
+    var rect = scenario.getBoundingClientRect();
+    if (rect.top > window.innerHeight * 0.85) return;
+    scenario.dataset.animated = "1";
+
+    var events = document.querySelectorAll(".lp-demo-event");
+    var ai = document.querySelector(".lp-demo-ai");
+    var routeB = document.getElementById("lpRouteB");
+    var routeBfill = document.querySelector(".lp-demo-route-fill-b");
+    var useRouteBtn = document.getElementById("lpUseRoute");
+
+    var step = 0;
+    function nextStep() {
+      step++;
+      if (step <= events.length) {
+        events[step - 1].classList.add("lp-event-active");
+        setTimeout(nextStep, 900);
+      } else if (step === events.length + 1) {
+        if (ai) ai.classList.add("lp-ai-active");
+        setTimeout(nextStep, 1200);
+      } else if (step === events.length + 2) {
+        if (routeB) { routeB.style.opacity = "1"; }
+        if (routeBfill) routeBfill.style.width = "45%";
+        if (useRouteBtn) useRouteBtn.style.opacity = "1";
+      }
+    }
+    setTimeout(nextStep, 600);
+  }
+
+  window.addEventListener("scroll", function() { animateCounters(); animateRouteDemo(); }, { passive: true });
+  animateCounters();
+  animateRouteDemo();
+})();
