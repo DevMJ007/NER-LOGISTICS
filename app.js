@@ -943,23 +943,198 @@ function init() {
 
 init();
 
-// ========== LANDING PAGE ANIMATIONS ==========
+// ========== LANDING PAGE HELPERS ==========
+function showLpLogin() {
+  document.getElementById("loginScreen").classList.add("visible");
+  document.getElementById("landingPage").classList.add("hidden");
+}
+
+// ========== DISASTER CANVAS ANIMATION ==========
 (function() {
-  const hamburger = document.getElementById("lpHamburger");
-  const navLinks = document.getElementById("lpNavLinks");
-  if (hamburger && navLinks) {
-    hamburger.addEventListener("click", function() { navLinks.classList.toggle("open"); });
+  var canvas = document.getElementById("disasterCanvas");
+  if (!canvas) return;
+  var ctx = canvas.getContext("2d");
+  var W, H;
+  function resize() { W = canvas.width = canvas.offsetWidth; H = canvas.height = canvas.offsetHeight; }
+  resize();
+  window.addEventListener("resize", resize);
+
+  var raindrops = [];
+  var lightningBolts = [];
+  var waves = [];
+  var clouds = [];
+  var particles = [];
+
+  for (var i = 0; i < 120; i++) {
+    raindrops.push({ x: Math.random() * 2000, y: Math.random() * 1200, len: 10 + Math.random() * 20, speed: 4 + Math.random() * 6, opacity: 0.15 + Math.random() * 0.35 });
+  }
+  for (var i = 0; i < 6; i++) {
+    clouds.push({ x: Math.random() * 2000, y: 30 + Math.random() * 120, w: 100 + Math.random() * 200, h: 40 + Math.random() * 40, speed: 0.2 + Math.random() * 0.3, opacity: 0.3 + Math.random() * 0.4 });
+  }
+  for (var i = 0; i < 40; i++) {
+    particles.push({ x: Math.random() * 2000, y: Math.random() * 1200, vx: (Math.random() - 0.5) * 1.5, vy: (Math.random() - 0.5) * 1.5, r: 1 + Math.random() * 2, opacity: 0.2 + Math.random() * 0.5, color: Math.random() > 0.7 ? "#ff771c" : Math.random() > 0.5 ? "#4A90D9" : "#2E8B57" });
   }
 
+  var lastLightning = 0;
+  var flashOpacity = 0;
+
+  function drawCloud(c) {
+    ctx.beginPath();
+    ctx.fillStyle = "rgba(180,190,210," + c.opacity + ")";
+    ctx.ellipse(c.x, c.y, c.w / 2, c.h / 2, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(c.x - c.w * 0.25, c.y + 5, c.w * 0.3, c.h * 0.4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(c.x + c.w * 0.25, c.y + 3, c.w * 0.35, c.h * 0.35, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  function drawLightning(x1, y1, x2, y2, depth) {
+    if (depth <= 0) return;
+    var midX = (x1 + x2) / 2 + (Math.random() - 0.5) * 60;
+    var midY = (y1 + y2) / 2 + (Math.random() - 0.5) * 20;
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(midX, midY);
+    ctx.lineTo(x2, y2);
+    ctx.strokeStyle = "rgba(255,255,200," + (0.6 + depth * 0.1) + ")";
+    ctx.lineWidth = depth * 0.8;
+    ctx.stroke();
+    if (Math.random() > 0.5) drawLightning(midX, midY, midX + (Math.random() - 0.5) * 80, midY + 40 + Math.random() * 60, depth - 1);
+    if (Math.random() > 0.6) drawLightning(midX, midY, midX + (Math.random() - 0.5) * 60, midY + 30 + Math.random() * 50, depth - 1);
+  }
+
+  function drawWave(t) {
+    for (var w = 0; w < 3; w++) {
+      ctx.beginPath();
+      var baseY = H * 0.75 + w * 18;
+      ctx.moveTo(0, baseY);
+      for (var x = 0; x <= W; x += 4) {
+        var y = baseY + Math.sin(x * 0.008 + t * 0.001 + w * 1.2) * (12 + w * 6) + Math.sin(x * 0.003 + t * 0.0005) * 8;
+        ctx.lineTo(x, y);
+      }
+      ctx.lineTo(W, H);
+      ctx.lineTo(0, H);
+      ctx.closePath();
+      var alpha = 0.08 + w * 0.04;
+      ctx.fillStyle = "rgba(74,144,217," + alpha + ")";
+      ctx.fill();
+    }
+  }
+
+  function frame(t) {
+    ctx.clearRect(0, 0, W, H);
+
+    // Background gradient
+    var grad = ctx.createLinearGradient(0, 0, 0, H);
+    grad.addColorStop(0, "#1a1a2e");
+    grad.addColorStop(0.5, "#16213e");
+    grad.addColorStop(1, "#0f3460");
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, W, H);
+
+    // Particles
+    particles.forEach(function(p) {
+      p.x += p.vx;
+      p.y += p.vy;
+      if (p.x < 0) p.x = W;
+      if (p.x > W) p.x = 0;
+      if (p.y < 0) p.y = H;
+      if (p.y > H) p.y = 0;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fillStyle = p.color.replace(")", "," + p.opacity + ")").replace("rgb", "rgba");
+      ctx.fillStyle = p.color;
+      ctx.globalAlpha = p.opacity;
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    });
+
+    // Clouds
+    clouds.forEach(function(c) {
+      c.x += c.speed;
+      if (c.x > W + 200) c.x = -200;
+      drawCloud(c);
+    });
+
+    // Rain
+    ctx.strokeStyle = "rgba(180,200,230,0.4)";
+    ctx.lineWidth = 1;
+    raindrops.forEach(function(r) {
+      ctx.globalAlpha = r.opacity;
+      ctx.beginPath();
+      ctx.moveTo(r.x, r.y);
+      ctx.lineTo(r.x - 2, r.y + r.len);
+      ctx.stroke();
+      r.y += r.speed;
+      r.x -= 0.5;
+      if (r.y > H) { r.y = -r.len; r.x = Math.random() * (W + 200); }
+    });
+    ctx.globalAlpha = 1;
+
+    // Lightning
+    if (t - lastLightning > 4000 + Math.random() * 8000) {
+      lastLightning = t;
+      var lx = W * 0.3 + Math.random() * W * 0.4;
+      lightningBolts.push({ x: lx, y: 0, endX: lx + (Math.random() - 0.5) * 100, endY: H * 0.5 + Math.random() * H * 0.3, depth: 4 + Math.floor(Math.random() * 2), born: t });
+      flashOpacity = 0.15;
+    }
+    lightningBolts.forEach(function(b) {
+      drawLightning(b.x, b.y, b.endX, b.endY, b.depth);
+    });
+    lightningBolts = lightningBolts.filter(function(b) { return t - b.born < 200; });
+
+    if (flashOpacity > 0) {
+      ctx.fillStyle = "rgba(255,255,255," + flashOpacity + ")";
+      ctx.fillRect(0, 0, W, H);
+      flashOpacity -= 0.005;
+    }
+
+    // Waves (flood)
+    drawWave(t);
+
+    // Mountain silhouettes
+    ctx.beginPath();
+    ctx.moveTo(0, H * 0.65);
+    ctx.lineTo(W * 0.15, H * 0.4);
+    ctx.lineTo(W * 0.3, H * 0.55);
+    ctx.lineTo(W * 0.45, H * 0.35);
+    ctx.lineTo(W * 0.6, H * 0.5);
+    ctx.lineTo(W * 0.75, H * 0.38);
+    ctx.lineTo(W * 0.9, H * 0.52);
+    ctx.lineTo(W, H * 0.45);
+    ctx.lineTo(W, H * 0.7);
+    ctx.lineTo(0, H * 0.7);
+    ctx.closePath();
+    ctx.fillStyle = "rgba(15,20,35,0.5)";
+    ctx.fill();
+
+    // Risk pulse rings
+    var pulseR = 30 + Math.sin(t * 0.002) * 15;
+    ctx.beginPath();
+    ctx.arc(W * 0.5, H * 0.45, pulseR, 0, Math.PI * 2);
+    ctx.strokeStyle = "rgba(255,119,28,0.3)";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(W * 0.5, H * 0.45, pulseR + 20, 0, Math.PI * 2);
+    ctx.strokeStyle = "rgba(255,119,28,0.15)";
+    ctx.stroke();
+
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+
   // Counter animation
-  function animateCounters() {
+  window.addEventListener("scroll", function() {
     document.querySelectorAll(".lp-stat-num[data-target]").forEach(function(el) {
       if (el.dataset.animated) return;
       var rect = el.getBoundingClientRect();
       if (rect.top > window.innerHeight || rect.bottom < 0) return;
       el.dataset.animated = "1";
       var target = parseInt(el.dataset.target, 10);
-      var suffix = el.classList.contains("lp-stat-pct") ? "%" : "";
       var start = 0;
       var duration = 1200;
       var startTime = null;
@@ -967,46 +1142,11 @@ init();
         if (!startTime) startTime = ts;
         var p = Math.min((ts - startTime) / duration, 1);
         var eased = 1 - Math.pow(1 - p, 3);
-        el.textContent = Math.floor(eased * target) + suffix;
+        el.textContent = Math.floor(eased * target);
         if (p < 1) requestAnimationFrame(step);
+        else el.textContent = target;
       }
       requestAnimationFrame(step);
     });
-  }
-
-  // Route demo animation
-  function animateRouteDemo() {
-    var scenario = document.getElementById("lpDemoScenario");
-    if (!scenario || scenario.dataset.animated) return;
-    var rect = scenario.getBoundingClientRect();
-    if (rect.top > window.innerHeight * 0.85) return;
-    scenario.dataset.animated = "1";
-
-    var events = document.querySelectorAll(".lp-demo-event");
-    var ai = document.querySelector(".lp-demo-ai");
-    var routeB = document.getElementById("lpRouteB");
-    var routeBfill = document.querySelector(".lp-demo-route-fill-b");
-    var useRouteBtn = document.getElementById("lpUseRoute");
-
-    var step = 0;
-    function nextStep() {
-      step++;
-      if (step <= events.length) {
-        events[step - 1].classList.add("lp-event-active");
-        setTimeout(nextStep, 900);
-      } else if (step === events.length + 1) {
-        if (ai) ai.classList.add("lp-ai-active");
-        setTimeout(nextStep, 1200);
-      } else if (step === events.length + 2) {
-        if (routeB) { routeB.style.opacity = "1"; }
-        if (routeBfill) routeBfill.style.width = "45%";
-        if (useRouteBtn) useRouteBtn.style.opacity = "1";
-      }
-    }
-    setTimeout(nextStep, 600);
-  }
-
-  window.addEventListener("scroll", function() { animateCounters(); animateRouteDemo(); }, { passive: true });
-  animateCounters();
-  animateRouteDemo();
+  }, { passive: true });
 })();
