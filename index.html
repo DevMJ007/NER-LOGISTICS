@@ -18,242 +18,282 @@
 <body>
 
 <!-- ========== LANDING PAGE ========== -->
-<div id="landingPage">
+<div id="landingPage" class="lp">
+
+  <!-- NAV -->
   <nav class="lp-nav">
     <div class="lp-nav-inner">
-      <a href="#" class="lp-brand">
-        <span class="lp-brand-icon">⚡</span>
-        <span>NER Logistics Intelligence</span>
+      <a href="#" class="lp-nav-brand">
+        <span class="lp-nav-brand-mark">N</span>
+        <span class="lp-nav-brand-text">NER Intelligence</span>
       </a>
       <div class="lp-nav-links">
-        <a href="#home">Home</a>
-        <a href="#platform">Platform</a>
+        <a href="#about">About</a>
         <a href="#features">Features</a>
-        <a href="#technology">Technology</a>
-        <a href="#how-it-works">How It Works</a>
+        <a href="#how">Process</a>
+        <a href="#tech">Technology</a>
       </div>
-      <button class="lp-nav-signin" onclick="showSignIn()">Sign In</button>
-      <button class="lp-nav-hamburger" onclick="toggleLpMenu()" aria-label="Menu">☰</button>
+      <div class="lp-nav-right">
+        <button class="lp-btn lp-btn-ghost" onclick="showSignIn()">Sign In</button>
+        <button class="lp-btn lp-btn-primary" onclick="showSignIn()">Get Access</button>
+      </div>
+      <button class="lp-nav-hamburger" onclick="toggleLpMenu()" aria-label="Menu">
+        <span></span><span></span><span></span>
+      </button>
     </div>
     <div class="lp-nav-mobile" id="lpMobileMenu">
-      <a href="#home">Home</a>
-      <a href="#platform">Platform</a>
+      <a href="#about">About</a>
       <a href="#features">Features</a>
-      <a href="#technology">Technology</a>
-      <a href="#how-it-works">How It Works</a>
-      <button class="lp-nav-signin" onclick="showSignIn()">Sign In</button>
+      <a href="#how">Process</a>
+      <a href="#tech">Technology</a>
+      <button class="lp-btn lp-btn-primary lp-btn-full" onclick="showSignIn()">Get Access</button>
     </div>
   </nav>
 
+  <!-- HERO -->
   <section class="lp-hero" id="home">
     <canvas id="disasterCanvas"></canvas>
     <div class="lp-hero-overlay"></div>
     <div class="lp-hero-content">
-      <div class="lp-hero-badge">AI-Powered Disaster & Logistics Intelligence</div>
-      <h1 class="lp-hero-title">Understand Risk. See What Changes. Act Before It Escalates.</h1>
-      <p class="lp-hero-desc">NER Logistics Intelligence brings weather, flood, satellite, GIS and field intelligence together to help authorities understand accessibility, identify disruptions and make informed decisions across the North Eastern Region.</p>
+      <span class="lp-hero-kicker">AI-Powered Disaster Intelligence</span>
+      <h1 class="lp-hero-title">See the Risk<br>Before It Happens</h1>
+      <p class="lp-hero-sub">Real-time weather, flood, satellite and AI intelligence across Northeast India — helping authorities act before disasters escalate.</p>
       <div class="lp-hero-actions">
-        <button class="lp-btn-primary" onclick="showSignIn()">Sign In to Platform</button>
-        <button class="lp-btn-secondary" onclick="scrollToSection('platform')">Explore Platform</button>
+        <button class="lp-btn lp-btn-primary lp-btn-lg" onclick="showSignIn()">Enter Platform</button>
+        <button class="lp-btn lp-btn-glass lp-btn-lg" onclick="scrollToSection('about')">Learn More</button>
+      </div>
+      <div class="lp-hero-status">
+        <span class="lp-hero-status-dot"></span>
+        Live monitoring across 8 states
       </div>
     </div>
   </section>
 
-  <section class="lp-stats-strip">
-    <div class="lp-stat">
-      <span class="lp-stat-value">8</span>
-      <span class="lp-stat-label">States Covered</span>
-    </div>
-    <div class="lp-stat-divider"></div>
-    <div class="lp-stat">
-      <span class="lp-stat-value">24/7</span>
-      <span class="lp-stat-label">Monitoring</span>
-    </div>
-    <div class="lp-stat-divider"></div>
-    <div class="lp-stat">
-      <span class="lp-stat-value">6</span>
-      <span class="lp-stat-label">Data Sources</span>
-    </div>
-    <div class="lp-stat-divider"></div>
-    <div class="lp-stat">
-      <span class="lp-stat-value">100%</span>
-      <span class="lp-stat-label">AI Powered</span>
-    </div>
-  </section>
-
-  <section class="lp-about" id="platform">
-    <div class="lp-section-header">
-      <span class="lp-section-tag">Platform</span>
-      <h2 class="lp-section-title">Multi-Source Intelligence for Northeast India</h2>
-      <p class="lp-section-subtitle">Real-time environmental monitoring, risk analysis, and decision support across all eight North Eastern states.</p>
-    </div>
-    <div class="lp-about-grid">
-      <div class="lp-about-card">
-        <div class="lp-about-card-icon lp-ic-weather">🌦️</div>
-        <h3 class="lp-about-card-title">Weather Monitoring</h3>
-        <p class="lp-about-card-desc">Real-time temperature, rainfall, wind and humidity from Open-Meteo API</p>
+  <!-- STATS -->
+  <section class="lp-stats">
+    <div class="lp-stats-inner">
+      <div class="lp-stat">
+        <div class="lp-stat-num">8</div>
+        <div class="lp-stat-label">States Monitored</div>
       </div>
-      <div class="lp-about-card">
-        <div class="lp-about-card-icon lp-ic-flood">🌊</div>
-        <h3 class="lp-about-card-title">Flood Detection</h3>
-        <p class="lp-about-card-desc">Hydrological river discharge monitoring across major rivers and tributaries</p>
+      <div class="lp-stat">
+        <div class="lp-stat-num">24/7</div>
+        <div class="lp-stat-label">Live Surveillance</div>
       </div>
-      <div class="lp-about-card">
-        <div class="lp-about-card-icon lp-ic-satellite">🛰️</div>
-        <h3 class="lp-about-card-title">Satellite Intel</h3>
-        <p class="lp-about-card-desc">Copernicus Sentinel-1 radar and Sentinel-2 multispectral environmental analysis</p>
+      <div class="lp-stat">
+        <div class="lp-stat-num">6</div>
+        <div class="lp-stat-label">Intelligence Sources</div>
       </div>
-      <div class="lp-about-card">
-        <div class="lp-about-card-icon lp-ic-ai">🤖</div>
-        <h3 class="lp-about-card-title">AI Risk Engine</h3>
-        <p class="lp-about-card-desc">Machine learning analyzes all data sources to predict disaster risk levels</p>
+      <div class="lp-stat">
+        <div class="lp-stat-num">&lt;5min</div>
+        <div class="lp-stat-label">Alert Response Time</div>
       </div>
     </div>
   </section>
 
-  <section class="lp-features" id="features">
-    <div class="lp-section-header">
-      <span class="lp-section-tag">Features</span>
-      <h2 class="lp-section-title">Everything You Need for Regional Intelligence</h2>
-      <p class="lp-section-subtitle">From raw sensor data to actionable insights — a complete disaster intelligence pipeline.</p>
-    </div>
-    <div class="lp-features-grid">
-      <div class="lp-feature-card">
-        <div class="lp-feature-icon">🗺️</div>
-        <h3>Interactive GIS Mapping</h3>
-        <p>Leaflet/OpenStreetMap powered real-time visualization with layer controls for weather, flood, satellite and risk overlays.</p>
+  <!-- ABOUT -->
+  <section class="lp-section" id="about">
+    <div class="lp-section-inner">
+      <div class="lp-editorial-block">
+        <span class="lp-editorial-kicker">The Platform</span>
+        <h2 class="lp-editorial-title">Multi-Source Intelligence<br>for a Vulnerable Region</h2>
+        <p class="lp-editorial-text">Northeast India faces floods, landslides, earthquakes and infrastructure disruptions daily. NER Intelligence brings every data source together — weather sensors, satellite imagery, river monitoring and field reports — into a single, actionable view.</p>
       </div>
-      <div class="lp-feature-card">
-        <div class="lp-feature-icon">📡</div>
-        <h3>Real-Time Data Streams</h3>
-        <p>WebSocket connections deliver live weather updates, sensor readings and incident reports as they happen.</p>
-      </div>
-      <div class="lp-feature-card">
-        <div class="lp-feature-icon">⚠️</div>
-        <h3>Smart Alert System</h3>
-        <p>Threshold-based and AI-driven alerts for extreme weather, flooding, road closures and accessibility changes.</p>
-      </div>
-      <div class="lp-feature-card">
-        <div class="lp-feature-icon">📊</div>
-        <h3>Risk Dashboard</h3>
-        <p>Centralized KPI grid showing state-wide risk levels, weather summaries, active incidents and connectivity status.</p>
-      </div>
-      <div class="lp-feature-card">
-        <div class="lp-feature-icon">🏔️</div>
-        <h3>Accessibility Analysis</h3>
-        <p>OSRM-powered route analysis showing road connectivity, blocked routes and alternate paths across the region.</p>
-      </div>
-      <div class="lp-feature-card">
-        <div class="lp-feature-icon">📝</div>
-        <h3>Field Reports</h3>
-        <p>Ground-truth data collection from field teams with geotagged incident reports and photographic evidence.</p>
+      <div class="lp-about-grid">
+        <div class="lp-about-card">
+          <div class="lp-about-card-num">01</div>
+          <h3>Weather Intelligence</h3>
+          <p>Real-time temperature, rainfall, wind and humidity from Open-Meteo. Hourly forecasts and severe weather alerts for all eight states.</p>
+        </div>
+        <div class="lp-about-card">
+          <div class="lp-about-card-num">02</div>
+          <h3>Flood Detection</h3>
+          <p>Hydrological river discharge monitoring across Brahmaputra and tributaries. Early warning for rising water levels and flood risk.</p>
+        </div>
+        <div class="lp-about-card">
+          <div class="lp-about-card-num">03</div>
+          <h3>Satellite Intel</h3>
+          <p>Copernicus Sentinel radar and multispectral imagery for vegetation, land cover and environmental change detection.</p>
+        </div>
+        <div class="lp-about-card">
+          <div class="lp-about-card-num">04</div>
+          <h3>AI Risk Engine</h3>
+          <p>Machine learning correlates all data sources to classify risk levels and predict disruption probability across corridors.</p>
+        </div>
       </div>
     </div>
   </section>
 
-  <section class="lp-how" id="how-it-works">
-    <div class="lp-section-header">
-      <span class="lp-section-tag">How It Works</span>
-      <h2 class="lp-section-title">From Data Collection to Decision Making</h2>
-      <p class="lp-section-subtitle">A four-stage intelligence pipeline that transforms raw data into actionable decisions.</p>
-    </div>
-    <div class="lp-how-steps">
-      <div class="lp-how-step">
-        <div class="lp-how-step-num">1</div>
-        <div class="lp-how-step-icon">📥</div>
-        <h3 class="lp-how-step-title">Collect</h3>
-        <p class="lp-how-step-desc">Gather data from Weather, Flood sensors, Satellite imagery, GIS databases, and Field Reports across all eight states.</p>
+  <!-- FEATURES -->
+  <section class="lp-section lp-section--alt" id="features">
+    <div class="lp-section-inner">
+      <div class="lp-editorial-block lp-editorial-block--center">
+        <span class="lp-editorial-kicker">Features</span>
+        <h2 class="lp-editorial-title">From Raw Data to<br>Actionable Decisions</h2>
+        <p class="lp-editorial-text">A complete intelligence pipeline — collect, analyze, visualize and respond. Every feature designed for operational clarity in high-stakes environments.</p>
       </div>
-      <div class="lp-how-arrow">→</div>
-      <div class="lp-how-step">
-        <div class="lp-how-step-num">2</div>
-        <div class="lp-how-step-icon">🔬</div>
-        <h3 class="lp-how-step-title">Analyze</h3>
-        <p class="lp-how-step-desc">PostGIS spatial queries, AI risk modeling and multi-source correlation to identify patterns and threats.</p>
-      </div>
-      <div class="lp-how-arrow">→</div>
-      <div class="lp-how-step">
-        <div class="lp-how-step-num">3</div>
-        <div class="lp-how-step-icon">🧠</div>
-        <h3 class="lp-how-step-title">Understand</h3>
-        <p class="lp-how-step-desc">Generate Risk scores, Accessibility maps and Disruption reports for each region and corridor.</p>
-      </div>
-      <div class="lp-how-arrow">→</div>
-      <div class="lp-how-step">
-        <div class="lp-how-step-num">4</div>
-        <div class="lp-how-step-icon">🚀</div>
-        <h3 class="lp-how-step-title">Respond</h3>
-        <p class="lp-how-step-desc">Deliver Alerts, Action briefs and Decision support to field teams and command centers in real time.</p>
-      </div>
-    </div>
-  </section>
-
-  <section class="lp-tech" id="technology">
-    <div class="lp-section-header">
-      <span class="lp-section-tag">Technology</span>
-      <h2 class="lp-section-title">Built on Proven Open-Source Technologies</h2>
-      <p class="lp-section-subtitle">A modern, scalable stack designed for reliability in challenging environments.</p>
-    </div>
-    <div class="lp-tech-grid">
-      <div class="lp-tech-card">
-        <div class="lp-tech-card-icon">🌤️</div>
-        <h4>Open-Meteo</h4>
-        <p>Free weather API providing hourly forecasts, historical data and severe weather alerts.</p>
-      </div>
-      <div class="lp-tech-card">
-        <div class="lp-tech-card-icon">🛰️</div>
-        <h4>Copernicus</h4>
-        <p>EU satellite program providing Sentinel-1 SAR and Sentinel-2 multispectral imagery.</p>
-      </div>
-      <div class="lp-tech-card">
-        <div class="lp-tech-card-icon">⚡</div>
-        <h4>FastAPI</h4>
-        <p>High-performance Python API framework for real-time data processing and WebSocket support.</p>
-      </div>
-      <div class="lp-tech-card">
-        <div class="lp-tech-card-icon">🗺️</div>
-        <h4>Leaflet / OSM</h4>
-        <p>Lightweight interactive maps with OpenStreetMap tiles and extensive plugin ecosystem.</p>
-      </div>
-      <div class="lp-tech-card">
-        <div class="lp-tech-card-icon">🛣️</div>
-        <h4>OSRM</h4>
-        <p>Open Source Routing Machine for distance matrices, route optimization and accessibility analysis.</p>
-      </div>
-      <div class="lp-tech-card">
-        <div class="lp-tech-card-icon">🔥</div>
-        <h4>Firebase</h4>
-        <p>Google authentication, real-time database and hosting for reliable deployment.</p>
-      </div>
-      <div class="lp-tech-card">
-        <div class="lp-tech-card-icon">🔌</div>
-        <h4>WebSocket</h4>
-        <p>Full-duplex communication for pushing live sensor data and alerts to connected clients.</p>
-      </div>
-      <div class="lp-tech-card">
-        <div class="lp-tech-card-icon">🐍</div>
-        <h4>Python AI</h4>
-        <p>Machine learning models for risk prediction, anomaly detection and natural language processing.</p>
+      <div class="lp-features-grid">
+        <div class="lp-feature-card">
+          <div class="lp-feature-icon">🗺️</div>
+          <h3>Interactive GIS Mapping</h3>
+          <p>Leaflet-powered real-time visualization with layer controls for weather, flood, satellite and risk overlays across the region.</p>
+        </div>
+        <div class="lp-feature-card">
+          <div class="lp-feature-icon">📡</div>
+          <h3>Real-Time Streams</h3>
+          <p>WebSocket connections deliver live sensor readings, weather updates and incident reports as they happen.</p>
+        </div>
+        <div class="lp-feature-card">
+          <div class="lp-feature-icon">⚠️</div>
+          <h3>Smart Alerts</h3>
+          <p>Threshold-based and AI-driven alerts for extreme weather, flooding, road closures and accessibility changes.</p>
+        </div>
+        <div class="lp-feature-card">
+          <div class="lp-feature-icon">📊</div>
+          <h3>Risk Dashboard</h3>
+          <p>Centralized KPI grid showing risk levels, weather summaries, active incidents and connectivity status at a glance.</p>
+        </div>
+        <div class="lp-feature-card">
+          <div class="lp-feature-icon">🏔️</div>
+          <h3>Route Analysis</h3>
+          <p>OSRM-powered accessibility analysis showing road connectivity, blocked routes and alternate paths across corridors.</p>
+        </div>
+        <div class="lp-feature-card">
+          <div class="lp-feature-icon">📝</div>
+          <h3>Field Reports</h3>
+          <p>Ground-truth data collection from field teams with geotagged incident reports and severity classification.</p>
+        </div>
       </div>
     </div>
   </section>
 
+  <!-- HOW IT WORKS -->
+  <section class="lp-section" id="how">
+    <div class="lp-section-inner">
+      <div class="lp-editorial-block lp-editorial-block--center">
+        <span class="lp-editorial-kicker">Process</span>
+        <h2 class="lp-editorial-title">Four Stages of<br>Intelligence</h2>
+        <p class="lp-editorial-text">From raw sensor data to real-time response — a systematic pipeline that transforms information into life-saving decisions.</p>
+      </div>
+      <div class="lp-how-steps">
+        <div class="lp-how-step">
+          <div class="lp-how-step-line"></div>
+          <div class="lp-how-step-num">01</div>
+          <h3>Collect</h3>
+          <p>Gather data from weather APIs, flood sensors, satellite imagery, GIS databases and field reports across all eight states.</p>
+        </div>
+        <div class="lp-how-step">
+          <div class="lp-how-step-line"></div>
+          <div class="lp-how-step-num">02</div>
+          <h3>Analyze</h3>
+          <p>Spatial queries, AI risk modeling and multi-source correlation identify patterns, threats and anomalies in real time.</p>
+        </div>
+        <div class="lp-how-step">
+          <div class="lp-how-step-line"></div>
+          <div class="lp-how-step-num">03</div>
+          <h3>Understand</h3>
+          <p>Generate risk scores, accessibility maps and disruption reports for each region and transport corridor.</p>
+        </div>
+        <div class="lp-how-step">
+          <div class="lp-how-step-line"></div>
+          <div class="lp-how-step-num">04</div>
+          <h3>Respond</h3>
+          <p>Deliver alerts, action briefs and decision support to field teams and command centers in real time.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TECH -->
+  <section class="lp-section lp-section--alt" id="tech">
+    <div class="lp-section-inner">
+      <div class="lp-editorial-block lp-editorial-block--center">
+        <span class="lp-editorial-kicker">Technology</span>
+        <h2 class="lp-editorial-title">Built on Open-Source<br>Infrastructure</h2>
+        <p class="lp-editorial-text">A modern, scalable stack designed for reliability in the most challenging environments.</p>
+      </div>
+      <div class="lp-tech-grid">
+        <div class="lp-tech-item">
+          <span class="lp-tech-icon">🌤️</span>
+          <div>
+            <h4>Open-Meteo</h4>
+            <p>Hourly forecasts, historical data and severe weather alerts.</p>
+          </div>
+        </div>
+        <div class="lp-tech-item">
+          <span class="lp-tech-icon">🛰️</span>
+          <div>
+            <h4>Copernicus</h4>
+            <p>Sentinel-1 SAR and Sentinel-2 multispectral satellite imagery.</p>
+          </div>
+        </div>
+        <div class="lp-tech-item">
+          <span class="lp-tech-icon">⚡</span>
+          <div>
+            <h4>FastAPI</h4>
+            <p>High-performance Python API with real-time WebSocket support.</p>
+          </div>
+        </div>
+        <div class="lp-tech-item">
+          <span class="lp-tech-icon">🗺️</span>
+          <div>
+            <h4>Leaflet / OSM</h4>
+            <p>Interactive maps with OpenStreetMap tiles and plugin ecosystem.</p>
+          </div>
+        </div>
+        <div class="lp-tech-item">
+          <span class="lp-tech-icon">🛣️</span>
+          <div>
+            <h4>OSRM</h4>
+            <p>Route optimization, distance matrices and accessibility analysis.</p>
+          </div>
+        </div>
+        <div class="lp-tech-item">
+          <span class="lp-tech-icon">🔥</span>
+          <div>
+            <h4>Firebase</h4>
+            <p>Google authentication, real-time database and hosting.</p>
+          </div>
+        </div>
+        <div class="lp-tech-item">
+          <span class="lp-tech-icon">🔌</span>
+          <div>
+            <h4>WebSocket</h4>
+            <p>Full-duplex live data streaming to connected clients.</p>
+          </div>
+        </div>
+        <div class="lp-tech-item">
+          <span class="lp-tech-icon">🐍</span>
+          <div>
+            <h4>Python AI</h4>
+            <p>Risk prediction, anomaly detection and NLP models.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
   <section class="lp-cta">
     <div class="lp-cta-inner">
-      <h2 class="lp-cta-title">Ready to Monitor Northeast India?</h2>
-      <p class="lp-cta-desc">Sign in to access the full intelligence platform with real-time dashboards, interactive maps, and AI-powered alerts.</p>
-      <button class="lp-btn-primary lp-btn-lg" onclick="showSignIn()">Get Started — Sign In</button>
+      <h2 class="lp-cta-title">Ready to See<br>What's Happening?</h2>
+      <p class="lp-cta-desc">Access real-time dashboards, interactive maps and AI-powered alerts for Northeast India.</p>
+      <button class="lp-btn lp-btn-primary lp-btn-lg" onclick="showSignIn()">Enter Platform</button>
     </div>
   </section>
 
+  <!-- FOOTER -->
   <footer class="lp-footer">
     <div class="lp-footer-inner">
       <div class="lp-footer-brand">
-        <span class="lp-brand-icon">⚡</span>
-        <span>NER Logistics Intelligence</span>
+        <span class="lp-nav-brand-mark lp-nav-brand-mark--sm">N</span>
+        <span>NER Intelligence</span>
       </div>
-      <p class="lp-footer-copy">Built for SIH 2026</p>
-      <p class="lp-footer-sub">AI-Powered Disaster & Logistics Intelligence for Northeast India</p>
+      <div class="lp-footer-meta">
+        <span>Built for SIH 2026</span>
+        <span class="lp-footer-dot"></span>
+        <span>AI-Powered Disaster Intelligence</span>
+      </div>
     </div>
   </footer>
 </div>
