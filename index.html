@@ -400,7 +400,7 @@
             <img class="topbar-user-avatar" id="topbarUserAvatar" src="" alt="" />
             <span class="topbar-user-name" id="topbarUserName">User</span>
           </div>
-          <button class="topbar-logout-btn" id="topbarLogoutBtn" onclick="handleSignOut()" title="Sign out">Logout</button>
+          <button class="topbar-logout-btn" id="topbarLogoutBtn" onclick="handleLogout()" title="Sign out">Logout</button>
         </div>
       </div>
       <div class="topbar-live-pill" id="topbarLivePill">
@@ -489,6 +489,10 @@
   function toggleSidebar() {
     const sidebar = document.getElementById('appSidebar');
     sidebar.classList.toggle('collapsed');
+  }
+
+  function toggleAlertsPanel() {
+    setView('alerts');
   }
 
   // Smooth scroll for nav links

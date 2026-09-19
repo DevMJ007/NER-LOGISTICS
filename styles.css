@@ -596,6 +596,332 @@ img {
   color: var(--primary);
 }
 
+/* --- Nav extras --- */
+
+.lp-nav-signin {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 18px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: var(--primary);
+  color: #fff;
+  border: none;
+}
+
+.lp-nav-signin:hover {
+  background: var(--primary-dark);
+  transform: translateY(-1px);
+}
+
+.lp-nav-hamburger {
+  display: none;
+  flex-direction: column;
+  gap: 4px;
+  cursor: pointer;
+  padding: 6px;
+  background: none;
+  border: none;
+  font-size: 1.4rem;
+  color: var(--ink);
+}
+
+.lp-nav-mobile {
+  display: none;
+  flex-direction: column;
+  padding: 16px 24px;
+  border-top: 1px solid var(--border);
+  gap: 12px;
+}
+
+.lp-nav-mobile.open {
+  display: flex;
+}
+
+.lp-nav-mobile a {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--muted);
+  padding: 8px 0;
+  transition: color 0.2s;
+}
+
+.lp-nav-mobile a:hover {
+  color: var(--primary);
+}
+
+/* --- Hero extras --- */
+
+.lp-hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 16px;
+  border-radius: 100px;
+  background: rgba(255, 119, 28, 0.15);
+  color: var(--primary);
+  font-size: 0.78rem;
+  font-weight: 600;
+  margin-bottom: 24px;
+  border: 1px solid rgba(255, 119, 28, 0.25);
+}
+
+.lp-hero-actions {
+  display: flex;
+  gap: 14px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.lp-btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 22px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.88rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  border: 1.5px solid rgba(255, 255, 255, 0.3);
+}
+
+.lp-btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+/* --- Stats strip --- */
+
+.lp-stats-strip {
+  background: #fff;
+  border-bottom: 1px solid var(--border);
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  max-width: 1140px;
+  margin: 0 auto;
+}
+
+.lp-stat {
+  padding: 32px 24px;
+  text-align: center;
+  border-right: 1px solid var(--border);
+}
+
+.lp-stat:last-child {
+  border-right: none;
+}
+
+.lp-stat-value {
+  color: var(--primary);
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 6px;
+  display: block;
+}
+
+.lp-stat-label {
+  color: var(--muted);
+  font-size: 0.85rem;
+  display: block;
+}
+
+.lp-stat-divider {
+  display: none;
+}
+
+/* --- Section header (landing) --- */
+
+.lp-section-header {
+  text-align: center;
+  margin-bottom: 48px;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.lp-section-tag {
+  display: inline-flex;
+  padding: 4px 14px;
+  border-radius: 100px;
+  background: rgba(255, 119, 28, 0.1);
+  color: var(--primary);
+  font-size: 0.78rem;
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+
+.lp-section-title {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 2rem;
+  margin-bottom: 12px;
+}
+
+.lp-section-subtitle {
+  color: var(--muted);
+  line-height: 1.6;
+  font-size: 0.95rem;
+}
+
+/* --- About card extras --- */
+
+.lp-about-card-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  margin-bottom: 16px;
+}
+
+.lp-ic-weather {
+  background: linear-gradient(135deg, #dbeafe, #93c5fd);
+}
+
+.lp-ic-flood {
+  background: linear-gradient(135deg, #d1fae5, #6ee7b7);
+}
+
+.lp-ic-satellite {
+  background: linear-gradient(135deg, #ede9fe, #c4b5fd);
+}
+
+.lp-ic-ai {
+  background: linear-gradient(135deg, #ffedd5, #fdba74);
+}
+
+.lp-about-card-title {
+  font-size: 1rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.lp-about-card-desc {
+  font-size: 0.85rem;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+/* --- Features section --- */
+
+.lp-features {
+  padding: 80px 24px;
+  background: var(--paper);
+}
+
+.lp-features-grid {
+  max-width: 1140px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+
+.lp-feature-card {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 28px 24px;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.lp-feature-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow);
+}
+
+.lp-feature-icon {
+  font-size: 1.5rem;
+  margin-bottom: 12px;
+}
+
+.lp-feature-card h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.lp-feature-card p {
+  font-size: 0.85rem;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+/* --- How it works extras --- */
+
+.lp-how-step-icon {
+  font-size: 1.5rem;
+  margin-bottom: 8px;
+}
+
+.lp-how-step-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.lp-how-step-desc {
+  font-size: 0.82rem;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+/* --- Tech card extras --- */
+
+.lp-tech-card-icon {
+  font-size: 1.5rem;
+  margin-bottom: 12px;
+}
+
+.lp-tech-card h4 {
+  font-size: 0.95rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.lp-tech-card p {
+  font-size: 0.82rem;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+/* --- Footer extras --- */
+
+.lp-footer-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  font-size: 0.92rem;
+}
+
+.lp-footer-sub {
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+/* --- CTA extras --- */
+
+.lp-cta-title {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 2rem;
+  margin-bottom: 16px;
+}
+
+.lp-cta-desc {
+  color: var(--muted);
+  margin-bottom: 32px;
+  line-height: 1.6;
+}
+
 /* ─── 3. SIGN-IN PAGE (#signInPage) ────────────────────── */
 
 #signInPage,
@@ -2137,17 +2463,18 @@ h1 {
     font-size: 0.95rem;
   }
 
-  .lp-hero-btns {
+  .lp-hero-actions {
     flex-direction: column;
     align-items: center;
   }
 
-  .lp-hero-btns .lp-btn {
+  .lp-hero-actions .lp-btn-primary,
+  .lp-hero-actions .lp-btn-secondary {
     width: 100%;
     max-width: 280px;
   }
 
-  .lp-stats-inner {
+  .lp-stats-strip {
     grid-template-columns: 1fr 1fr;
   }
 
@@ -2165,6 +2492,10 @@ h1 {
   }
 
   .lp-about-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .lp-features-grid {
     grid-template-columns: 1fr;
   }
 

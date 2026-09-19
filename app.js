@@ -512,10 +512,9 @@ function renderDashboard() {
     hourlyHtml = '<p style="color:var(--muted);text-align:center;padding:20px">No hourly data</p>';
   }
 
+  var classification = classifyRisk(score);
   var dialAngle = score * 3.6;
   var dialColor = classification === "critical" ? "var(--danger)" : classification === "high" ? "var(--primary-dark)" : classification === "elevated" ? "var(--primary)" : classification === "moderate" ? "var(--warning)" : "var(--success)";
-
-  var classification = classifyRisk(score);
 
   return '<div class="dashboard-grid">' +
     '<div class="map-shell"><div id="dashboardMap" style="min-height:500px;width:100%"></div></div>' +
