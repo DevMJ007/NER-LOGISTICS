@@ -2347,21 +2347,31 @@ h1 {
 
   .sidebar-nav-item {
     flex-direction: column;
-    gap: 4px;
-    padding: 8px 4px;
-    font-size: 0.65rem;
+    gap: 2px;
+    padding: 6px 2px;
+    font-size: 0.6rem;
     text-align: center;
     justify-content: center;
     transform: none;
+    min-width: 0;
   }
 
   .sidebar-nav-item:hover {
     transform: none;
   }
 
+  .sidebar-nav-icon {
+    width: 24px;
+    height: 24px;
+    font-size: 0.9rem;
+  }
+
   .sidebar-nav-label {
-    font-size: 0.62rem;
+    font-size: 0.55rem;
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
   }
 
   .sidebar-nav-shortcut {
@@ -2393,12 +2403,42 @@ h1 {
   }
 
   .app-kpi-grid {
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+
+  .kpi-card {
+    padding: 10px 10px;
+  }
+
+  .kpi-card-header {
+    margin-bottom: 4px;
+  }
+
+  .kpi-card-icon {
+    font-size: 0.85rem;
+  }
+
+  .kpi-card-title {
+    font-size: 0.62rem;
+  }
+
+  .kpi-card-value {
+    font-size: 1.1rem;
+  }
+
+  .kpi-card-sub {
+    font-size: 0.65rem;
   }
 
   .dashboard-grid {
     grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .map-shell {
+    min-height: 300px;
   }
 
   .grid-2 {
