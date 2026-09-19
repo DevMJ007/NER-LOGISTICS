@@ -1,26 +1,43 @@
+// ========== STORAGE ==========
 const storage = {
-  get(k, f) { try { const r = localStorage.getItem(k); return r ? JSON.parse(r) : f; } catch(e) { return f; } },
+  get(k, f) {
+    try { const r = localStorage.getItem(k); return r ? JSON.parse(r) : f; } catch (e) { return f; }
+  },
   set(k, v) { localStorage.setItem(k, JSON.stringify(v)); },
   removeItem(k) { localStorage.removeItem(k); }
 };
 
-const appConfig = window.NER_APP_CONFIG || { apiBaseUrl: "http://127.0.0.1:8000", defaultLocation: { name: "Aizawl", lat: 23.7271, lon: 92.7176 } };
+// ========== CONFIG ==========
+const appConfig = window.NER_APP_CONFIG || {
+  apiBaseUrl: "http://127.0.0.1:8000",
+  defaultLocation: { name: "Aizawl", lat: 23.7271, lon: 92.7176 }
+};
 
+const DEFAULT_LOCATION = { name: "Aizawl", lat: 23.7271, lon: 92.7176 };
+
+// ========== DISTRICT COORDINATES ==========
 const districtCoordinates = {
-  Aizawl: { lat: 23.7271, lon: 92.7176 }, "Imphal East": { lat: 24.817, lon: 93.9368 },
-  "East Khasi Hills": { lat: 25.5788, lon: 91.8933 }, "Kamrup Metropolitan": { lat: 26.1445, lon: 91.7362 },
-  Kohima: { lat: 25.6751, lon: 94.1086 }, "West Tripura": { lat: 23.8315, lon: 91.2868 },
-  "Lower Subansiri": { lat: 27.533, lon: 93.833 }
+  Mizoram: { lat: 23.7271, lon: 92.7176 },
+  "Aizawl": { lat: 23.7271, lon: 92.7176 },
+  Manipur: { lat: 24.8170, lon: 93.9368 },
+  "Imphal East": { lat: 24.8170, lon: 93.9368 },
+  Meghalaya: { lat: 25.5788, lon: 91.8933 },
+  "East Khasi Hills": { lat: 25.5788, lon: 91.8933 },
+  Assam: { lat: 26.1445, lon: 91.7362 },
+  "Kamrup Metropolitan": { lat: 26.1445, lon: 91.7362 },
+  Nagaland: { lat: 25.6751, lon: 94.1086 },
+  Kohima: { lat: 25.6751, lon: 94.1086 },
+  Tripura: { lat: 23.8315, lon: 91.2868 },
+  "West Tripura": { lat: 23.8315, lon: 91.2868 },
+  Arunachal: { lat: 27.5330, lon: 93.8330 },
+  "Lower Subansiri": { lat: 27.5330, lon: 93.8330 },
+  Sikkim: { lat: 27.5330, lon: 88.5122 },
+  "Gangtok": { lat: 27.3389, lon: 88.6065 }
 };
 
-const liveData = {
-  backendOnline: false, backendChecked: false, user: null, userLocation: null,
-  integrations: {}, satellite: null, flood: null, lastError: null,
-  dbIncidents: [], dashboardStats: {}
-};
-
+// ========== STATE ==========
 const state = {
-  view: location.hash.replace("#", "") || "dashboard",
+  view: (location.hash || "#dashboard").replace("#", "") || "dashboard",
   district: "Aizawl",
   emergency: storage.get("ner:emergency", false),
   offline: false,
@@ -29,29 +46,40 @@ const state = {
   queuedReports: storage.get("ner:queuedReports", []),
   thresholds: storage.get("ner:thresholds", { moderate: 21, elevated: 41, high: 61, critical: 81, rainfall: 45, flood: 70 }),
   layers: storage.get("ner:layers", { incidents: true, flood: true, risk: true, weather: true }),
-  weather: { location: "Aizawl", temperature: 24, humidity: 86, rainfall: 58, wind: 18, rainProbability: 82, floodIndex: 71, warning: "Heavy rainfall likely", hourly: [], affectedRoads: ["Silchar to Aizawl", "Guwahati to Shillong", "Imphal to Moreh"], source: "demo" },
+  weather: storage.get("ner:weather", {
+    location: "Aizawl",
+    temperature: 24,
+    humidity: 86,
+    rainfall: 58,
+    wind: 18,
+    rainProbability: 82,
+    floodIndex: 71,
+    warning: "Heavy rainfall likely",
+    source: "demo",
+    hourly: [],
+    affectedRoads: ["Silchar to Aizawl", "Guwahati to Shillong", "Imphal to Moreh"]
+  }),
   lastAIAnalysis: null,
   previousRiskScore: 0,
-  autoRefreshTimer: null
+  autoRefreshTimer: null,
+  userLocation: storage.get("ner:userLocation", null),
+  backendOnline: false,
+  user: null
 };
 
-let ws = null, wsReconnectTimer = null;
-let leafletMap = null, incidentMarkers = {}, userMarker = null;
-let searchControl = null;
+let ws = null;
+let wsReconnectTimer = null;
+let leafletMap = null;
+let incidentMarkers = {};
+let userMarker = null;
+let floodCircles = [];
+let riskCircles = [];
 
-const viewTitles = {
-  dashboard: "Disaster Monitor",
-  map: "Live Map",
-  weather: "Weather & Flood",
-  alerts: "Notifications",
-  report: "Report Incident",
-  emergency: "Emergency"
-};
+// ========== DOM HELPERS ==========
+function qs(selector, root) { return (root || document).querySelector(selector); }
+function qsa(selector, root) { return [...(root || document).querySelectorAll(selector)]; }
 
-function qs(s, r = document) { return r.querySelector(s); }
-function qsa(s, r = document) { return [...r.querySelectorAll(s)]; }
-function districtLocation() { return districtCoordinates[state.district] || appConfig.defaultLocation; }
-
+// ========== API HELPERS ==========
 async function apiGet(path) {
   const r = await fetch(`${appConfig.apiBaseUrl}${path}`);
   if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
@@ -59,19 +87,31 @@ async function apiGet(path) {
 }
 
 async function apiPost(path, body) {
-  const r = await fetch(`${appConfig.apiBaseUrl}${path}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  const r = await fetch(`${appConfig.apiBaseUrl}${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body)
+  });
   if (!r.ok) { const t = await r.text(); throw new Error(t || `${r.status} ${r.statusText}`); }
   return r.json();
 }
 
 async function apiPatch(path, body) {
-  const r = await fetch(`${appConfig.apiBaseUrl}${path}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  const r = await fetch(`${appConfig.apiBaseUrl}${path}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body)
+  });
   if (!r.ok) { const t = await r.text(); throw new Error(t || `${r.status} ${r.statusText}`); }
   return r.json();
 }
 
+// ========== UTILITY FUNCTIONS ==========
 function clamp(v, mn, mx) { return Math.min(mx, Math.max(mn, v)); }
-function escapeHtml(v) { return String(v).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+
+function escapeHtml(v) {
+  return String(v).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
 
 function classifyRisk(score) {
   if (score >= state.thresholds.critical) return "critical";
@@ -81,37 +121,50 @@ function classifyRisk(score) {
   return "low";
 }
 
-function riskLabel(score) { return { low: "Low", moderate: "Moderate", elevated: "Elevated", high: "High", critical: "Critical" }[classifyRisk(score)]; }
-function riskBadge(score) { return `<span class="risk-badge risk-${classifyRisk(score)}">${riskLabel(score)}</span>`; }
+function riskLabel(score) {
+  return { low: "Low", moderate: "Moderate", elevated: "Elevated", high: "High", critical: "Critical" }[classifyRisk(score)] || "Unknown";
+}
+
+function riskBadge(score) {
+  return '<span class="risk-badge risk-' + classifyRisk(score) + '">' + riskLabel(score) + '</span>';
+}
 
 function computeRisk() {
-  const satelliteRisk = Number(liveData.satellite?.risk_score || 54);
-  const active = state.incidents.filter(i => i.status !== "RESOLVED");
+  const w = state.weather;
+  const active = state.incidents.filter(function (i) { return i.status !== "RESOLVED"; });
   const incidentRisk = clamp(active.length * 12, 0, 40);
   return clamp(Math.round(
-    state.weather.rainfall * 0.25 +
-    state.weather.floodIndex * 0.25 +
-    satelliteRisk * 0.2 +
+    w.rainfall * 0.25 +
+    w.floodIndex * 0.25 +
+    (state.lastAIAnalysis?.score || 50) * 0.2 +
     incidentRisk * 0.15 +
     (state.emergency ? 8 : 0)
   ), 0, 100);
 }
 
 function riskFactors() {
-  const satelliteRisk = Number(liveData.satellite?.risk_score || 54);
-  const active = state.incidents.filter(i => i.status !== "RESOLVED");
+  var w = state.weather;
+  var active = state.incidents.filter(function (i) { return i.status !== "RESOLVED"; });
   return [
-    { label: "Rainfall", value: clamp(state.weather.rainfall, 0, 100), note: `${state.weather.rainfall}mm - Open-Meteo` },
-    { label: "Flood Risk", value: clamp(state.weather.floodIndex, 0, 100), note: "Hydrological model" },
-    { label: "Satellite Analysis", value: satelliteRisk, note: liveData.satellite?.configured ? "Sentinel live" : "Sentinel estimate" },
-    { label: "Active Incidents", value: clamp(active.length * 16, 0, 100), note: `${active.length} reported` },
-    { label: "Wind Speed", value: clamp(state.weather.wind * 1.5, 0, 100), note: `${state.weather.wind} km/h` },
-    { label: "Humidity", value: clamp(state.weather.humidity, 0, 100), note: `${state.weather.humidity}%` }
+    { label: "Rainfall", value: clamp(w.rainfall, 0, 100), note: w.rainfall + "mm" },
+    { label: "Flood Risk", value: clamp(w.floodIndex, 0, 100), note: "Hydrological model" },
+    { label: "Wind Speed", value: clamp(w.wind * 1.5, 0, 100), note: w.wind + " km/h" },
+    { label: "Active Incidents", value: clamp(active.length * 16, 0, 100), note: active.length + " active" },
+    { label: "Humidity", value: clamp(w.humidity, 0, 100), note: w.humidity + "%" },
+    { label: "Rain Probability", value: clamp(w.rainProbability, 0, 100), note: w.rainProbability + "%" }
   ];
 }
 
 function addNotification(title, message, severity, source) {
-  const n = { id: Date.now(), title, message, severity, source, time: new Date().toISOString(), read: false };
+  var n = {
+    id: Date.now(),
+    title: title,
+    message: message,
+    severity: severity || "moderate",
+    source: source || "System",
+    time: new Date().toISOString(),
+    read: false
+  };
   state.notifications.unshift(n);
   if (state.notifications.length > 50) state.notifications = state.notifications.slice(0, 50);
   storage.set("ner:notifications", state.notifications);
@@ -125,33 +178,174 @@ function saveState() {
   storage.set("ner:thresholds", state.thresholds);
   storage.set("ner:layers", state.layers);
   storage.set("ner:notifications", state.notifications);
+  storage.set("ner:weather", {
+    location: state.weather.location,
+    temperature: state.weather.temperature,
+    humidity: state.weather.humidity,
+    rainfall: state.weather.rainfall,
+    wind: state.weather.wind,
+    rainProbability: state.weather.rainProbability,
+    floodIndex: state.weather.floodIndex,
+    warning: state.weather.warning,
+    source: state.weather.source,
+    hourly: state.weather.hourly,
+    affectedRoads: state.weather.affectedRoads
+  });
+  storage.set("ner:userLocation", state.userLocation);
 }
 
-function toast(msg) {
-  const host = qs("#toastHost"); const n = document.createElement("div");
-  n.className = "toast"; n.textContent = msg; host.appendChild(n);
-  setTimeout(() => n.remove(), 4000);
+function toast(msg, type) {
+  var host = qs("#toastHost");
+  if (!host) return;
+  var n = document.createElement("div");
+  n.className = "toast toast-" + (type || "success");
+  n.innerHTML = '<div class="toast-title">' + escapeHtml(msg) + '</div>';
+  host.appendChild(n);
+  setTimeout(function () { n.remove(); }, 4000);
 }
 
+function districtLocation() {
+  return districtCoordinates[state.district] || appConfig.defaultLocation || DEFAULT_LOCATION;
+}
+
+// ========== VIEW TITLES ==========
+var viewTitles = {
+  dashboard: "Dashboard",
+  map: "Live Map",
+  weather: "Weather",
+  alerts: "Alerts",
+  report: "Report",
+  emergency: "Emergency",
+  settings: "Settings"
+};
+
+// ========== NAVIGATION ==========
 function setView(view) {
-  state.view = view; saveState();
-  if (location.hash !== `#${view}`) history.replaceState(null, "", `#${view}`);
+  if (!viewTitles[view]) view = "dashboard";
+  state.view = view;
+  saveState();
+  if (location.hash !== "#" + view) {
+    history.replaceState(null, "", "#" + view);
+  }
   render();
-  if (view === "map") setTimeout(initLeafletMap, 100);
+  if (view === "map") {
+    setTimeout(function () { initLeafletMap("dashboardMap"); }, 150);
+  }
+}
+
+function attachNavHandlers() {
+  qsa(".sidebar-nav-item").forEach(function (item) {
+    item.addEventListener("click", function (e) {
+      e.preventDefault();
+      var view = this.getAttribute("data-view");
+      if (view) setView(view);
+    });
+  });
+}
+
+// ========== AUTH ==========
+function initApp() {
+  var savedUser = storage.get("ner:user", null);
+  if (savedUser) {
+    state.user = savedUser;
+    state.userLocation = storage.get("ner:userLocation", null);
+    showApp();
+    return true;
+  }
+  showLanding();
+  return false;
+}
+
+function showSignIn() {
+  var landing = qs("#landingPage");
+  var signIn = qs("#signInPage");
+  var appShell = qs("#appShell");
+  if (landing) landing.classList.add("hidden");
+  if (appShell) { appShell.classList.add("hidden"); appShell.classList.remove("visible"); }
+  if (signIn) signIn.classList.add("visible");
+}
+
+function showApp() {
+  var landing = qs("#landingPage");
+  var signIn = qs("#signInPage");
+  var appShell = qs("#appShell");
+  if (landing) landing.classList.add("hidden");
+  if (signIn) signIn.classList.remove("visible");
+  if (appShell) { appShell.classList.remove("hidden"); appShell.classList.add("visible"); }
+}
+
+function showLanding() {
+  var landing = qs("#landingPage");
+  var signIn = qs("#signInPage");
+  var appShell = qs("#appShell");
+  if (appShell) { appShell.classList.remove("visible"); appShell.classList.add("hidden"); }
+  if (signIn) signIn.classList.remove("visible");
+  if (landing) landing.classList.remove("hidden");
+}
+
+function handleGoogleSignIn() {
+  if (window.nerFirebase && window.nerFirebase.signIn) {
+    window.nerFirebase.signIn().catch(function (err) {
+      var msg = err.message || String(err);
+      var errEl = qs("#googleLoginBtn");
+      if (msg.indexOf("unauthorized-domain") !== -1) {
+        toast("Firebase: add domain to authorized domains.", "warning");
+      } else {
+        toast("Sign-in error: " + msg, "warning");
+      }
+    });
+  } else {
+    var fakeUser = {
+      email: "admin@ner-gov.in",
+      name: "NER Admin",
+      role: "district_officer",
+      district: "Aizawl",
+      photoURL: ""
+    };
+    state.user = fakeUser;
+    storage.set("ner:user", fakeUser);
+    onSignInSuccess(fakeUser);
+  }
+}
+
+function onSignInSuccess(user) {
+  state.user = user;
+  storage.set("ner:user", user);
+  showApp();
+  render();
+  refreshAllData();
+  connectWebSocket();
+  requestLocation();
+  watchUserLocation();
+  startAutoRefresh();
+  toast("Welcome, " + (user.name || user.email) + "!");
+}
+
+function handleLogout() {
+  state.user = null;
+  storage.removeItem("ner:user");
+  if (ws) { ws.close(); ws = null; }
+  if (wsReconnectTimer) { clearTimeout(wsReconnectTimer); wsReconnectTimer = null; }
+  if (state.autoRefreshTimer) { clearInterval(state.autoRefreshTimer); state.autoRefreshTimer = null; }
+  if (leafletMap) { try { leafletMap.remove(); } catch (e) {} leafletMap = null; }
+  incidentMarkers = {};
+  userMarker = null;
+  showLanding();
+  toast("Logged out.");
 }
 
 // ========== LOCATION ==========
 function requestLocation() {
-  return new Promise((resolve) => {
+  return new Promise(function (resolve) {
     if (!navigator.geolocation) { resolve(null); return; }
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const loc = { lat: pos.coords.latitude, lon: pos.coords.longitude, accuracy: pos.coords.accuracy };
-        liveData.userLocation = loc;
+      function (pos) {
+        var loc = { lat: pos.coords.latitude, lon: pos.coords.longitude, accuracy: pos.coords.accuracy };
+        state.userLocation = loc;
         storage.set("ner:userLocation", loc);
         resolve(loc);
       },
-      () => resolve(null),
+      function () { resolve(null); },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 }
     );
   });
@@ -160,27 +354,1004 @@ function requestLocation() {
 function watchUserLocation() {
   if (!navigator.geolocation) return;
   navigator.geolocation.watchPosition(
-    (pos) => {
-      liveData.userLocation = { lat: pos.coords.latitude, lon: pos.coords.longitude, accuracy: pos.coords.accuracy };
+    function (pos) {
+      state.userLocation = { lat: pos.coords.latitude, lon: pos.coords.longitude, accuracy: pos.coords.accuracy };
+      storage.set("ner:userLocation", state.userLocation);
       if (leafletMap) updateUserLocationMarker();
     },
-    () => {},
+    function () { },
     { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
   );
 }
 
+// ========== RENDER ==========
+function render() {
+  document.title = (viewTitles[state.view] || "Dashboard") + " — NER Logistics Intelligence";
+
+  qsa(".sidebar-nav-item").forEach(function (item) {
+    var v = item.getAttribute("data-view");
+    if (v === state.view) item.classList.add("active");
+    else item.classList.remove("active");
+  });
+
+  var topTitle = qs("#topbarTitle");
+  if (topTitle) topTitle.textContent = viewTitles[state.view] || "Dashboard";
+
+  updateUserUI();
+  renderKpis();
+  renderView();
+  updateAlertBadge();
+}
+
+function updateUserUI() {
+  var u = state.user;
+  var nameEl = qs("#topbarUserName");
+  var avatarEl = qs("#topbarUserAvatar");
+  if (nameEl) nameEl.textContent = (u && (u.name || u.email)) || "User";
+  if (avatarEl && u && u.photoURL) {
+    avatarEl.src = u.photoURL;
+    avatarEl.style.display = "inline-block";
+  }
+}
+
+function updateAlertBadge() {
+  var badge = qs("#alertBadge");
+  if (badge) {
+    var unread = state.notifications.filter(function (n) { return !n.read; }).length;
+    badge.textContent = unread;
+    badge.style.display = unread > 0 ? "inline-block" : "none";
+  }
+}
+
+function renderKpis() {
+  var score = computeRisk();
+  var classification = classifyRisk(score);
+  var active = state.incidents.filter(function (i) { return i.status !== "RESOLVED"; });
+  var w = state.weather;
+  var highRiskAreas = active.filter(function (i) {
+    return i.severity === "Critical" || i.severity === "High";
+  }).length;
+  var blockedCorridors = active.filter(function (i) {
+    return i.type && (i.type.indexOf("Road") !== -1 || i.type.indexOf("Bridge") !== -1 || i.type.indexOf("Block") !== -1);
+  }).length;
+  var weatherAlerts = (w.rainfall > state.thresholds.rainfall ? 1 : 0) + (w.floodIndex > state.thresholds.flood ? 1 : 0) + (w.wind > 50 ? 1 : 0);
+  var reportsCount = state.incidents.length;
+
+  var riskEl = qs("#kpiRiskLevel");
+  var riskSub = qs("#kpiRiskSub");
+  if (riskEl) { riskEl.textContent = score; riskEl.className = "kpi-card-value risk-" + classification; }
+  if (riskSub) riskSub.textContent = riskLabel(score);
+
+  var tempEl = qs("#kpiTemp");
+  var tempSub = qs("#kpiTempSub");
+  if (tempEl) tempEl.textContent = w.temperature + "\u00B0C";
+  if (tempSub) tempSub.textContent = w.source === "open-meteo" ? "Live" : "Demo";
+
+  var rainEl = qs("#kpiRain");
+  var rainSub = qs("#kpiRainSub");
+  if (rainEl) rainEl.textContent = w.rainfall + "mm";
+  if (rainSub) rainSub.textContent = w.rainProbability + "% chance";
+
+  var incEl = qs("#kpiIncidents");
+  var incSub = qs("#kpiIncidentsSub");
+  if (incEl) incEl.textContent = active.length;
+  if (incSub) incSub.textContent = highRiskAreas + " high-risk";
+
+  var floodEl = qs("#kpiFlood");
+  var floodSub = qs("#kpiFloodSub");
+  if (floodEl) floodEl.textContent = w.floodIndex;
+  if (floodSub) floodSub.textContent = weatherAlerts + " alerts";
+
+  var accEl = qs("#kpiAccess");
+  var accSub = qs("#kpiAccessSub");
+  if (accEl) accEl.textContent = blockedCorridors;
+  if (accSub) accSub.textContent = blockedCorridors > 0 ? "blocked" : "all open";
+}
+
+function renderView() {
+  var root = qs("#appViewRoot");
+  if (!root) return;
+  var views = {
+    dashboard: renderDashboard,
+    map: renderMapView,
+    weather: renderWeather,
+    alerts: renderAlerts,
+    report: renderReport,
+    emergency: renderEmergency,
+    settings: renderSettings
+  };
+  var fn = views[state.view] || views.dashboard;
+  root.innerHTML = fn();
+  attachViewHandlers(root);
+  if (state.view === "dashboard") {
+    setTimeout(function () { initLeafletMap("dashboardMap"); }, 150);
+  }
+}
+
+// ========== VIEW: DASHBOARD ==========
+function renderDashboard() {
+  var score = computeRisk();
+  var w = state.weather;
+  var analysis = state.lastAIAnalysis;
+  var recentAlerts = state.notifications.slice(0, 5);
+  var active = state.incidents.filter(function (i) { return i.status !== "RESOLVED"; });
+
+  var alertsHtml = recentAlerts.length ? recentAlerts.map(function (a) {
+    var severityClass = a.severity === "critical" ? "alert-critical" : a.severity === "high" ? "alert-warning" : "alert-success";
+    var dotClass = a.severity === "critical" ? "dot-critical" : a.severity === "high" ? "dot-warning" : "dot-success";
+    return '<li class="alert-item ' + severityClass + '">' +
+      '<span class="alert-dot ' + dotClass + '"></span>' +
+      '<div class="alert-text"><strong>' + escapeHtml(a.title) + '</strong><br><small>' + escapeHtml(a.message) + '</small></div>' +
+      '<span class="alert-time">' + new Date(a.time).toLocaleTimeString() + '</span>' +
+      '</li>';
+  }).join("") : '<li class="alert-item"><div class="alert-text"><strong>No alerts yet</strong><br><small>AI is monitoring conditions.</small></div></li>';
+
+  var factorsHtml = riskFactors().map(function (f) {
+    return '<div style="margin-bottom:10px">' +
+      '<div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-size:0.82rem;font-weight:600">' + f.label + '</span><span style="font-size:0.78rem;color:var(--muted)">' + f.value + '/100</span></div>' +
+      '<div class="bar-track"><div class="bar-fill" style="width:' + f.value + '%"></div></div>' +
+      '<small style="color:var(--muted);font-size:0.72rem">' + f.note + '</small></div>';
+  }).join("");
+
+  var roadsHtml = w.affectedRoads.map(function (r, i) {
+    return '<li class="road-item"><div class="road-item-header"><h4>' + escapeHtml(r) + '</h4>' +
+      '<span class="road-badge ' + (i === 0 ? "badge-closed" : i === 1 ? "badge-delayed" : "badge-open") + '">' +
+      (i === 0 ? "Blocked" : i === 1 ? "Delayed" : "Open") + '</span></div>' +
+      '<p>Weather impact: ' + (i === 0 ? "Heavy" : i === 1 ? "Moderate" : "Low") + '</p></li>';
+  }).join("");
+
+  var hourlyHtml = "";
+  if (w.hourly && w.hourly.length) {
+    hourlyHtml = '<div class="forecast-bars">' +
+      w.hourly.slice(0, 8).map(function (h) {
+        var barHeight = Math.max(10, Math.min(100, (h.rain || 0) * 2));
+        return '<div style="text-align:center"><div class="forecast-bar" style="height:' + barHeight + 'px"></div><div style="font-size:0.68rem;margin-top:4px"><strong>' + (h.rain || 0) + '</strong><br>' + h.hour + ':00</div></div>';
+      }).join("") +
+      '</div>';
+  } else {
+    hourlyHtml = '<p style="color:var(--muted);text-align:center;padding:20px">No hourly data</p>';
+  }
+
+  var dialAngle = score * 3.6;
+  var dialColor = classification === "critical" ? "var(--danger)" : classification === "high" ? "var(--primary-dark)" : classification === "elevated" ? "var(--primary)" : classification === "moderate" ? "var(--warning)" : "var(--success)";
+
+  var classification = classifyRisk(score);
+
+  return '<div class="dashboard-grid">' +
+    '<div class="map-shell"><div id="dashboardMap" style="min-height:500px;width:100%"></div></div>' +
+    '<div class="side-stack">' +
+      '<div class="panel">' +
+        '<div class="panel-header"><div><p class="eyebrow">AI Risk Engine</p><h3>Risk Assessment</h3></div>' + riskBadge(score) + '</div>' +
+        '<div class="panel-body">' +
+          '<div class="risk-dial">' +
+            '<div class="dial-ring"><svg width="80" height="80"><circle cx="40" cy="40" r="34" fill="none" stroke="var(--border)" stroke-width="6"/>' +
+            '<circle cx="40" cy="40" r="34" fill="none" stroke="' + dialColor + '" stroke-width="6" stroke-dasharray="' + (dialAngle / 100 * 213.6) + ' 213.6" stroke-linecap="round" transform="rotate(-90 40 40)"/></svg>' +
+            '<div class="dial-core" style="flex-direction:column"><span style="font-size:0.68rem;color:var(--muted)">Score</span><strong style="font-size:1.1rem">' + score + '</strong></div></div>' +
+            '<div><p style="font-size:0.82rem;color:var(--muted);line-height:1.5">' + (analysis ? analysis.recommendation : "Analyzing conditions...") + '</p>' +
+            (analysis && analysis.rising ? '<p style="color:var(--danger);font-weight:700;font-size:0.78rem;margin-top:6px">\u2191 Risk increasing</p>' : '') +
+            (analysis && analysis.falling ? '<p style="color:var(--success);font-weight:700;font-size:0.78rem;margin-top:6px">\u2193 Risk decreasing</p>' : '') +
+            '</div></div>' +
+          '<div style="margin-top:16px">' + factorsHtml + '</div>' +
+        '</div></div>' +
+      '<div class="panel">' +
+        '<div class="panel-header"><div><p class="eyebrow">Notifications</p><h3>Recent Alerts</h3></div>' +
+        '<button class="ghost-button" data-action="view-alerts" style="min-height:28px;padding:2px 8px;font-size:0.75rem">View All</button></div>' +
+        '<div class="panel-body"><ul class="alert-list">' + alertsHtml + '</ul></div></div>' +
+      '<div class="panel">' +
+        '<div class="panel-header"><div><p class="eyebrow">Weather</p><h3>' + escapeHtml(w.location) + '</h3></div></div>' +
+        '<div class="panel-body">' +
+          '<div style="display:flex;align-items:baseline;gap:8px;margin-bottom:8px"><span style="font-size:2rem;font-weight:800">' + w.temperature + '\u00B0C</span><span style="font-size:0.82rem;color:var(--muted)">' + w.source + '</span></div>' +
+          '<p style="font-size:0.82rem;color:var(--muted);margin-bottom:8px">' + escapeHtml(w.warning) + '</p>' +
+          '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">' +
+          '<small>Rain: ' + w.rainfall + 'mm</small>' +
+          '<small>Wind: ' + w.wind + ' km/h</small>' +
+          '<small>Humidity: ' + w.humidity + '%</small>' +
+          '<small>Flood: ' + w.floodIndex + '/100</small>' +
+          '</div></div></div>' +
+    '</div></div>' +
+    '<div class="grid-3" style="margin-top:20px">' +
+      '<div class="panel">' +
+        '<div class="panel-header"><div><p class="eyebrow">Weather</p><h3>Forecast</h3></div></div>' +
+        '<div class="panel-body">' + hourlyHtml + '</div></div>' +
+      '<div class="panel">' +
+        '<div class="panel-header"><div><p class="eyebrow">Risk Analysis</p><h3>Factors</h3></div></div>' +
+        '<div class="panel-body">' + factorsHtml + '</div></div>' +
+      '<div class="panel">' +
+        '<div class="panel-header"><div><p class="eyebrow">Roads</p><h3>Affected Corridors</h3></div></div>' +
+        '<div class="panel-body"><div class="road-list">' + roadsHtml + '</div></div></div>' +
+    '</div>';
+}
+
+// ========== VIEW: MAP ==========
+function renderMapView() {
+  var layerChips = Object.keys(state.layers).map(function (k) {
+    return '<button class="chip ' + (state.layers[k] ? "active" : "") + '" type="button" data-layer="' + k + '">' +
+      k.charAt(0).toUpperCase() + k.slice(1) + '</button>';
+  }).join("");
+
+  return '<div class="section-header">' +
+    '<div><h2>Live Disaster Map</h2><p style="color:var(--muted);font-size:0.85rem">Interactive GIS with real-time incident and risk overlays</p></div>' +
+    '<div class="action-row">' +
+      '<button class="ghost-button" type="button" data-action="center-me">My Location</button>' +
+      '<button class="ghost-button" type="button" data-action="center-ner">Center NER</button>' +
+      '<button class="ghost-button" type="button" data-action="refresh-map">Refresh</button>' +
+    '</div></div>' +
+    '<div style="margin-top:12px;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden">' +
+      '<div style="padding:10px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-wrap:wrap">' +
+        '<input id="mapSearchInput" type="text" placeholder="Search locations, incidents..." autocomplete="off" style="flex:1;min-width:200px;padding:8px 14px;border:1.5px solid var(--border);border-radius:8px;font-size:0.84rem" />' +
+        '<div class="layer-list" style="display:flex;gap:6px;flex-wrap:wrap">' + layerChips + '</div>' +
+      '</div>' +
+      '<div id="dashboardMap" style="height:600px"></div>' +
+    '</div>';
+}
+
+// ========== VIEW: WEATHER ==========
+function renderWeather() {
+  var w = state.weather;
+  var score = Math.max(w.rainfall, w.floodIndex);
+
+  var stripCards = [
+    { label: "Temperature", value: w.temperature + "\u00B0C", icon: "\uD83C\uDF21\uFE0F" },
+    { label: "Humidity", value: w.humidity + "%", icon: "\uD83D\uDCA7" },
+    { label: "Rainfall", value: w.rainfall + "mm", icon: "\uD83C\uDF27\uFE0F" },
+    { label: "Wind", value: w.wind + " km/h", icon: "\uD83C\uDF2C\uFE0F" },
+    { label: "Rain %", value: w.rainProbability + "%", icon: "\u2614" },
+    { label: "Flood Index", value: w.floodIndex + "/100", icon: "\uD83C\uDF0A" }
+  ];
+
+  var stripHtml = stripCards.map(function (c) {
+    return '<div class="weather-card" style="text-align:center;padding:16px">' +
+      '<div style="font-size:1.4rem;margin-bottom:6px">' + c.icon + '</div>' +
+      '<div style="font-size:0.78rem;color:var(--muted);margin-bottom:4px">' + c.label + '</div>' +
+      '<div style="font-size:1.15rem;font-weight:700">' + c.value + '</div></div>';
+  }).join("");
+
+  var hourlyHtml = "";
+  if (w.hourly && w.hourly.length) {
+    hourlyHtml = '<div class="forecast-bars">' +
+      w.hourly.slice(0, 8).map(function (h) {
+        var barH = Math.max(10, Math.min(100, (h.rain || 0) * 2));
+        return '<div style="text-align:center"><div class="forecast-bar" style="height:' + barH + 'px"></div><div style="font-size:0.68rem;margin-top:4px"><strong>' + (h.rain || 0) + '</strong><br>' + h.hour + ':00</div></div>';
+      }).join("") + '</div>';
+  } else {
+    hourlyHtml = '<p style="color:var(--muted);text-align:center;padding:30px">No hourly forecast data</p>';
+  }
+
+  var roadsHtml = w.affectedRoads.map(function (r, i) {
+    var severity = i === 0 ? "High" : i === 1 ? "Moderate" : "Low";
+    return '<div class="road-item"><div class="road-item-header"><h4>' + escapeHtml(r) + '</h4>' +
+      '<span class="road-badge ' + (i === 0 ? "badge-closed" : i === 1 ? "badge-delayed" : "badge-open") + '">' + severity + '</span></div>' +
+      '<p>Weather impact: ' + (i === 0 ? "Heavy rainfall, possible flooding" : i === 1 ? "Moderate rain, reduced visibility" : "Light conditions") + '</p></div>';
+  }).join("");
+
+  return '<div class="section-header">' +
+    '<div><h2>' + escapeHtml(w.location) + ' Weather</h2><p style="color:var(--muted);font-size:0.85rem">' + escapeHtml(w.warning) + ' \u2014 Source: ' + w.source + '</p></div>' +
+    '<div>' + riskBadge(score) + '</div></div>' +
+    '<div class="weather-strip" style="margin-top:16px">' + stripHtml + '</div>' +
+    '<div class="grid-2" style="margin-top:20px">' +
+      '<div class="panel"><div class="panel-header"><div><p class="eyebrow">Hourly</p><h3>Rainfall Forecast</h3></div></div>' +
+        '<div class="panel-body">' + hourlyHtml + '</div></div>' +
+      '<div class="panel"><div class="panel-header"><div><p class="eyebrow">Roads</p><h3>Weather Impact</h3></div></div>' +
+        '<div class="panel-body"><div class="road-list">' + roadsHtml + '</div></div></div>' +
+    '</div>';
+}
+
+// ========== VIEW: ALERTS ==========
+function renderAlerts() {
+  var notifs = state.notifications;
+  var listHtml = notifs.length ? notifs.map(function (n) {
+    var sevColor = n.severity === "critical" ? "var(--danger)" : n.severity === "high" ? "var(--primary)" : n.severity === "moderate" ? "var(--warning)" : "var(--success)";
+    var dotClass = n.severity === "critical" ? "dot-critical" : n.severity === "high" ? "dot-warning" : "dot-success";
+    return '<div class="alert-item" style="border-left:4px solid ' + sevColor + ';margin-bottom:8px">' +
+      '<span class="alert-dot ' + dotClass + '"></span>' +
+      '<div style="flex:1"><div style="display:flex;justify-content:space-between;align-items:start;gap:8px">' +
+        '<div><strong>' + escapeHtml(n.title) + '</strong><p style="margin:4px 0 0;font-size:0.82rem;color:var(--muted)">' + escapeHtml(n.message) + '</p>' +
+        '<small style="color:#999">' + new Date(n.time).toLocaleString() + ' \u2014 ' + escapeHtml(n.source) + '</small></div>' +
+        (n.read ? '' : '<span style="width:8px;height:8px;border-radius:50%;background:var(--primary);flex-shrink:0"></span>') +
+      '</div></div></div>';
+  }).join("") : '<div class="panel" style="padding:40px;text-align:center"><p style="color:var(--muted)">No notifications yet. AI is monitoring conditions.</p></div>';
+
+  return '<div class="section-header">' +
+    '<div><h2>Alerts & Notifications</h2><p style="color:var(--muted);font-size:0.85rem">' + notifs.length + ' notification' + (notifs.length !== 1 ? 's' : '') + '</p></div>' +
+    '<div class="action-row">' +
+      '<button class="ghost-button" type="button" data-action="mark-all-read">Mark All Read</button>' +
+      '<button class="ghost-button" type="button" data-action="clear-alerts">Clear All</button>' +
+    '</div></div>' +
+    '<div style="margin-top:16px">' + listHtml + '</div>';
+}
+
+// ========== VIEW: REPORT ==========
+function renderReport() {
+  var pendingHtml = state.queuedReports.length ? state.queuedReports.map(function (r) {
+    return '<div class="road-item"><div class="road-item-header"><h4>' + escapeHtml(r.type) + '</h4>' +
+      '<span class="road-badge badge-delayed">Pending</span></div>' +
+      '<p>' + escapeHtml(r.severity) + ' \u2014 ' + (r.createdAt || "queued") + '</p></div>';
+  }).join("") : '<p style="color:var(--muted);padding:16px">No pending reports</p>';
+
+  var recentHtml = state.incidents.slice(0, 8).map(function (i) {
+    return '<div class="road-item"><div class="road-item-header"><h4>' + escapeHtml(i.type) + '</h4>' +
+      '<span class="road-badge ' + (i.status === "RESOLVED" ? "badge-open" : i.severity === "Critical" ? "badge-closed" : "badge-delayed") + '">' + escapeHtml(i.status) + '</span></div>' +
+      '<p>' + escapeHtml(i.severity) + (i.created_at ? ' \u2014 ' + new Date(i.created_at).toLocaleDateString() : '') + '</p></div>';
+  }).join("");
+
+  var locValue = state.userLocation
+    ? state.userLocation.lat.toFixed(5) + ", " + state.userLocation.lon.toFixed(5)
+    : "23.72710, 92.71760";
+
+  return '<div class="section-header"><div><h2>Submit Field Report</h2><p style="color:var(--muted);font-size:0.85rem">Report floods, landslides, road damage. Reports feed the AI risk engine.</p></div></div>' +
+    '<div class="grid-2" style="margin-top:16px">' +
+      '<div class="form-card">' +
+        '<form id="reportForm">' +
+          '<div class="form-grid">' +
+            '<div class="form-group"><label>Incident Type</label>' +
+              '<select name="type" required><option value="Flood">Flood</option><option value="Landslide">Landslide</option><option value="Road Damage">Road Damage</option><option value="Bridge Damage">Bridge Damage</option><option value="Heavy Rainfall">Heavy Rainfall</option><option value="Road Blockage">Road Blockage</option><option value="Accident">Accident</option><option value="Other">Other</option></select></div>' +
+            '<div class="form-group"><label>Severity</label>' +
+              '<select name="severity" required><option value="Low">Low</option><option value="Medium" selected>Medium</option><option value="High">High</option><option value="Critical">Critical</option></select></div>' +
+            '<div class="form-group form-full"><label>Location (Lat, Lon)</label>' +
+              '<input name="location" type="text" value="' + locValue + '" required /></div>' +
+            '<div class="form-group form-full"><label>Description</label>' +
+              '<textarea name="description" placeholder="Describe what you see..." required></textarea></div>' +
+          '</div>' +
+          '<div class="action-row" style="margin-top:16px">' +
+            '<button class="button" type="submit">Submit Report</button>' +
+            '<button class="ghost-button" type="button" data-action="use-gps">Use My GPS</button>' +
+            '<button class="ghost-button" type="button" data-action="toggle-offline">' + (state.offline ? "Go Online" : "Offline Mode") + '</button>' +
+          '</div>' +
+        '</form></div>' +
+      '<div class="side-stack">' +
+        '<div class="panel"><div class="panel-header"><div><p class="eyebrow">Queue</p><h3>' + state.queuedReports.length + ' Pending</h3></div>' +
+          '<button class="ghost-button" type="button" data-action="sync-reports">Sync</button></div>' +
+          '<div class="panel-body">' + pendingHtml + '</div></div>' +
+        '<div class="panel"><div class="panel-header"><div><p class="eyebrow">Recent</p><h3>Incidents</h3></div></div>' +
+          '<div class="panel-body"><div class="road-list">' + (recentHtml || '<p style="color:var(--muted)">No incidents yet</p>') + '</div></div></div>' +
+      '</div></div>';
+}
+
+// ========== VIEW: EMERGENCY ==========
+function renderEmergency() {
+  var score = computeRisk();
+  var active = state.incidents.filter(function (i) { return i.status !== "RESOLVED"; });
+  var w = state.weather;
+
+  var activeIncidentsHtml = active.slice(0, 5).map(function (i) {
+    return '<div class="road-item"><div class="road-item-header"><h4>' + escapeHtml(i.type) + '</h4>' + riskBadge(i.risk_score || 0) + '</div>' +
+      '<p>' + escapeHtml(i.severity) + ' \u2014 ' + escapeHtml(i.status) + '</p></div>';
+  }).join("");
+
+  return '<div class="emergency-hero ' + (state.emergency ? "active" : "") + '">' +
+    '<div style="display:flex;justify-content:space-between;align-items:start;flex-wrap:wrap;gap:16px">' +
+      '<div><h3 style="color:var(--danger);font-size:1.1rem;font-weight:700">' + (state.emergency ? "\u26A0 EMERGENCY MODE ACTIVE" : "Emergency Response Center") + '</h3>' +
+      '<p style="color:var(--muted);font-size:0.85rem;margin-top:6px">' + (state.emergency ? "Emergency protocols are active. All systems in alert mode." : "Activate emergency mode to enable enhanced monitoring and alert broadcasting.") + '</p></div>' +
+      '<div class="action-row">' +
+        '<button class="' + (state.emergency ? "danger-button" : "button") + '" type="button" data-action="toggle-emergency">' + (state.emergency ? "Deactivate Emergency" : "Activate Emergency") + '</button>' +
+        '<button class="ghost-button" type="button" data-action="broadcast-alert">Broadcast Alert</button>' +
+      '</div></div></div>' +
+    '<div class="grid-3" style="margin-top:20px">' +
+      '<div class="panel"><div class="panel-header"><div><p class="eyebrow">Risk</p><h3>Current Level</h3></div></div>' +
+        '<div class="panel-body" style="text-align:center;padding:24px">' +
+          '<div style="font-size:3rem;font-weight:800">' + score + '</div>' +
+          riskBadge(score) +
+          '<p style="color:var(--muted);margin-top:8px;font-size:0.82rem">' + (state.lastAIAnalysis ? state.lastAIAnalysis.recommendation : "Analyzing...") + '</p>' +
+        '</div></div>' +
+      '<div class="panel"><div class="panel-header"><div><p class="eyebrow">Incidents</p><h3>Active (' + active.length + ')</h3></div></div>' +
+        '<div class="panel-body"><div class="road-list">' +
+        (activeIncidentsHtml || '<p style="color:var(--muted)">No active incidents</p>') +
+        '</div></div></div>' +
+      '<div class="panel"><div class="panel-header"><div><p class="eyebrow">Weather</p><h3>Conditions</h3></div></div>' +
+        '<div class="panel-body" style="padding:20px">' +
+          '<div style="font-size:1.8rem;font-weight:800">' + w.temperature + '\u00B0C</div>' +
+          '<p style="color:var(--muted);font-size:0.85rem;margin:6px 0">' + w.rainfall + 'mm rain, ' + w.wind + ' km/h wind</p>' +
+          '<p style="color:var(--muted);font-size:0.82rem">' + escapeHtml(w.warning) + '</p>' +
+          '<div style="margin-top:12px">' + riskBadge(w.floodIndex) + '</div>' +
+        '</div></div>' +
+    '</div>';
+}
+
+// ========== VIEW: SETTINGS ==========
+function renderSettings() {
+  var u = state.user || {};
+  var notifPrefs = state.thresholds;
+
+  return '<div class="section-header"><div><h2>Settings</h2><p style="color:var(--muted);font-size:0.85rem">Manage your profile and preferences</p></div></div>' +
+    '<div class="grid-2" style="margin-top:16px">' +
+      '<div>' +
+        '<div class="panel" style="margin-bottom:20px"><div class="panel-header"><div><p class="eyebrow">Profile</p><h3>Account</h3></div></div>' +
+          '<div class="panel-body">' +
+            '<div style="display:flex;align-items:center;gap:14px;margin-bottom:16px">' +
+              '<div style="width:48px;height:48px;border-radius:50%;background:var(--primary);color:#fff;display:grid;place-items:center;font-size:1.2rem;font-weight:700">' +
+                (u.name ? u.name.charAt(0).toUpperCase() : "U") + '</div>' +
+              '<div><strong style="font-size:0.95rem">' + escapeHtml(u.name || "User") + '</strong><br><small style="color:var(--muted)">' + escapeHtml(u.email || "") + '</small><br><small style="color:var(--primary);font-weight:600">' + escapeHtml(u.role || "citizen") + '</small></div>' +
+            '</div>' +
+            '<div style="padding-top:12px;border-top:1px solid var(--border)">' +
+              '<div style="display:flex;justify-content:space-between;padding:8px 0"><span style="font-size:0.82rem">District</span><span style="font-size:0.82rem;font-weight:600">' + escapeHtml(u.district || "Aizawl") + '</span></div>' +
+              '<div style="display:flex;justify-content:space-between;padding:8px 0"><span style="font-size:0.82rem">Status</span><span style="font-size:0.82rem;color:var(--success);font-weight:600">Active</span></div>' +
+            '</div></div></div>' +
+
+        '<div class="panel" style="margin-bottom:20px"><div class="panel-header"><div><p class="eyebrow">Alerts</p><h3>Notification Preferences</h3></div></div>' +
+          '<div class="panel-body">' +
+            '<div class="form-group" style="margin-bottom:12px"><label>Moderate Risk Threshold</label>' +
+              '<input type="range" min="10" max="50" value="' + notifPrefs.moderate + '" data-setting="moderate" class="setting-range" />' +
+              '<small style="color:var(--muted)">' + notifPrefs.moderate + '/100</small></div>' +
+            '<div class="form-group" style="margin-bottom:12px"><label>High Risk Threshold</label>' +
+              '<input type="range" min="40" max="80" value="' + notifPrefs.high + '" data-setting="high" class="setting-range" />' +
+              '<small style="color:var(--muted)">' + notifPrefs.high + '/100</small></div>' +
+            '<div class="form-group" style="margin-bottom:12px"><label>Critical Risk Threshold</label>' +
+              '<input type="range" min="60" max="100" value="' + notifPrefs.critical + '" data-setting="critical" class="setting-range" />' +
+              '<small style="color:var(--muted)">' + notifPrefs.critical + '/100</small></div>' +
+            '<div class="form-group" style="margin-bottom:12px"><label>Rainfall Alert (mm)</label>' +
+              '<input type="range" min="20" max="100" value="' + notifPrefs.rainfall + '" data-setting="rainfall" class="setting-range" />' +
+              '<small style="color:var(--muted)">' + notifPrefs.rainfall + 'mm</small></div>' +
+            '<div class="form-group"><label>Flood Index Alert</label>' +
+              '<input type="range" min="30" max="100" value="' + notifPrefs.flood + '" data-setting="flood" class="setting-range" />' +
+              '<small style="color:var(--muted)">' + notifPrefs.flood + '/100</small></div>' +
+          '</div></div>' +
+
+        '<div class="panel"><div class="panel-header"><div><p class="eyebrow">Display</p><h3>Map Preferences</h3></div></div>' +
+          '<div class="panel-body">' +
+            Object.keys(state.layers).map(function (k) {
+              return '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)">' +
+                '<span style="font-size:0.84rem;font-weight:500">' + k.charAt(0).toUpperCase() + k.slice(1) + ' Layer</span>' +
+                '<button class="chip ' + (state.layers[k] ? "active" : "") + '" type="button" data-layer="' + k + '" data-action="toggle-layer">' + (state.layers[k] ? "On" : "Off") + '</button></div>';
+            }).join("") +
+          '</div></div>' +
+      '</div>' +
+
+      '<div>' +
+        '<div class="panel" style="margin-bottom:20px"><div class="panel-header"><div><p class="eyebrow">System</p><h3>Backend Status</h3></div></div>' +
+          '<div class="panel-body">' +
+            '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)"><span style="font-size:0.82rem">API Server</span><span style="font-size:0.82rem;color:' + (state.backendOnline ? "var(--success)" : "var(--danger)") + ';font-weight:600">' + (state.backendOnline ? "Online" : "Offline") + '</span></div>' +
+            '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)"><span style="font-size:0.82rem">WebSocket</span><span style="font-size:0.82rem;color:' + (ws && ws.readyState === WebSocket.OPEN ? "var(--success)" : "var(--danger)") + ';font-weight:600">' + (ws && ws.readyState === WebSocket.OPEN ? "Connected" : "Disconnected") + '</span></div>' +
+            '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)"><span style="font-size:0.82rem">Weather Feed</span><span style="font-size:0.82rem;color:' + (state.weather.source === "open-meteo" ? "var(--success)" : "var(--warning)") + ';font-weight:600">' + (state.weather.source === "open-meteo" ? "Live" : "Demo") + '</span></div>' +
+            '<div style="display:flex;justify-content:space-between;padding:8px 0"><span style="font-size:0.82rem">Location</span><span style="font-size:0.82rem;font-weight:600">' + (state.userLocation ? "Acquired" : "Default") + '</span></div>' +
+          '</div></div>' +
+
+        '<div class="panel"><div class="panel-header"><div><p class="eyebrow">Account</p><h3>Actions</h3></div></div>' +
+          '<div class="panel-body">' +
+            '<p style="font-size:0.82rem;color:var(--muted);margin-bottom:16px">Sign out of your account. Your local data will be preserved.</p>' +
+            '<button class="danger-button" type="button" data-action="logout" style="width:100%">Sign Out</button>' +
+          '</div></div>' +
+      '</div></div>';
+}
+
+// ========== ATTACH VIEW HANDLERS ==========
+function attachViewHandlers(root) {
+  qsa("[data-layer]", root).forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var layer = this.getAttribute("data-layer");
+      if (layer && state.layers.hasOwnProperty(layer)) {
+        state.layers[layer] = !state.layers[layer];
+        saveState();
+        if (leafletMap) updateMapMarkers();
+        render();
+      }
+    });
+  });
+
+  qsa("[data-action]", root).forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var action = this.getAttribute("data-action");
+      handleViewAction(action);
+    });
+  });
+
+  var reportForm = qs("#reportForm", root);
+  if (reportForm) {
+    reportForm.addEventListener("submit", handleReportSubmit);
+  }
+
+  qsa(".setting-range", root).forEach(function (input) {
+    input.addEventListener("input", function () {
+      var key = this.getAttribute("data-setting");
+      var val = parseInt(this.value, 10);
+      if (key && state.thresholds.hasOwnProperty(key)) {
+        state.thresholds[key] = val;
+        saveState();
+        var label = this.nextElementSibling;
+        if (label) {
+          if (key === "rainfall") label.textContent = val + "mm";
+          else label.textContent = val + "/100";
+        }
+      }
+    });
+  });
+}
+
+function handleViewAction(action) {
+  switch (action) {
+    case "view-alerts":
+      setView("alerts");
+      break;
+    case "center-me":
+      if (state.userLocation && leafletMap) {
+        leafletMap.setView([state.userLocation.lat, state.userLocation.lon], 12);
+      } else {
+        toast("Location not available", "warning");
+      }
+      break;
+    case "center-ner":
+      if (leafletMap) {
+        var loc = districtLocation();
+        leafletMap.setView([loc.lat, loc.lon], 7);
+      }
+      break;
+    case "refresh-map":
+      if (leafletMap) updateMapMarkers();
+      toast("Map refreshed");
+      break;
+    case "mark-all-read":
+      state.notifications.forEach(function (n) { n.read = true; });
+      storage.set("ner:notifications", state.notifications);
+      updateAlertBadge();
+      render();
+      toast("All marked as read");
+      break;
+    case "clear-alerts":
+      state.notifications = [];
+      storage.set("ner:notifications", []);
+      updateAlertBadge();
+      render();
+      toast("Alerts cleared");
+      break;
+    case "use-gps":
+      fillLocationFromGPS();
+      break;
+    case "toggle-offline":
+      state.offline = !state.offline;
+      toast(state.offline ? "Offline mode enabled" : "Online mode restored");
+      render();
+      break;
+    case "sync-reports":
+      syncReports();
+      break;
+    case "toggle-emergency":
+      state.emergency = !state.emergency;
+      saveState();
+      toast(state.emergency ? "Emergency mode ACTIVATED" : "Emergency mode deactivated", state.emergency ? "danger" : "success");
+      render();
+      break;
+    case "broadcast-alert":
+      broadcastAlert();
+      break;
+    case "logout":
+      handleLogout();
+      break;
+  }
+}
+
+// ========== MAP INITIALIZATION ==========
+function initLeafletMap(containerId) {
+  var container = qs("#" + containerId);
+  if (!container) return;
+  if (leafletMap) {
+    try { leafletMap.remove(); } catch (e) { }
+    leafletMap = null;
+    incidentMarkers = {};
+    userMarker = null;
+    floodCircles = [];
+    riskCircles = [];
+  }
+
+  var userLoc = state.userLocation;
+  var center = userLoc ? [userLoc.lat, userLoc.lon] : [districtLocation().lat, districtLocation().lon];
+  var zoom = userLoc ? 11 : 7;
+
+  leafletMap = L.map(containerId, { zoomControl: true }).setView(center, zoom);
+
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    attribution: '&copy; OpenStreetMap contributors',
+    maxZoom: 18
+  }).addTo(leafletMap);
+
+  L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
+    attribution: '&copy; Esri',
+    maxZoom: 18,
+    opacity: 0.3
+  }).addTo(leafletMap);
+
+  if (state.userLocation) updateUserLocationMarker();
+
+  var searchBox = qs("#mapSearchInput");
+  if (searchBox) {
+    searchBox.addEventListener("keydown", function (e) {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        var query = searchBox.value.trim();
+        if (!query) return;
+        toast("Searching...");
+        fetch("https://nominatim.openstreetmap.org/search?format=json&q=" + encodeURIComponent(query) + "&limit=5")
+          .then(function (r) { return r.json(); })
+          .then(function (results) {
+            if (results.length > 0) {
+              var lat = parseFloat(results[0].lat);
+              var lon = parseFloat(results[0].lon);
+              leafletMap.setView([lat, lon], 13);
+              L.marker([lat, lon]).addTo(leafletMap).bindPopup("<strong>" + results[0].display_name + "</strong>").openPopup();
+              toast("Found: " + results[0].display_name.split(",")[0]);
+            } else {
+              toast("Place not found", "warning");
+            }
+          })
+          .catch(function () { toast("Search failed", "warning"); });
+      }
+    });
+  }
+
+  updateMapMarkers();
+  setTimeout(function () { if (leafletMap) leafletMap.invalidateSize(); }, 200);
+}
+
+function updateUserLocationMarker() {
+  if (!leafletMap || !state.userLocation) return;
+  var lat = state.userLocation.lat;
+  var lon = state.userLocation.lon;
+
+  if (userMarker) leafletMap.removeLayer(userMarker);
+
+  var icon = L.divIcon({
+    className: "",
+    html: '<div style="width:20px;height:20px;border-radius:50%;background:#3b82f6;border:3px solid #fff;box-shadow:0 0 12px rgba(59,130,246,0.6);animation:pulse 2s infinite"></div>',
+    iconSize: [20, 20],
+    iconAnchor: [10, 10]
+  });
+
+  userMarker = L.marker([lat, lon], { icon: icon }).addTo(leafletMap);
+  userMarker.bindPopup("<strong>You are here</strong>");
+}
+
+function updateMapMarkers() {
+  if (!leafletMap) return;
+
+  Object.values(incidentMarkers).forEach(function (m) { leafletMap.removeLayer(m); });
+  incidentMarkers = {};
+  floodCircles.forEach(function (c) { leafletMap.removeLayer(c); });
+  floodCircles = [];
+  riskCircles.forEach(function (c) { leafletMap.removeLayer(c); });
+  riskCircles = [];
+
+  if (state.layers.incidents) {
+    state.incidents.filter(function (i) { return i.status !== "RESOLVED"; }).forEach(function (inc) {
+      var lat = inc.lat || (inc.location && inc.location.lat) || 23.727;
+      var lon = inc.lon || (inc.location && inc.location.lon) || 92.717;
+      var sevColor = {
+        Critical: "#D92D20",
+        High: "#F97316",
+        Medium: "#F59E0B",
+        Moderate: "#F59E0B",
+        Low: "#2E8B57"
+      }[inc.severity] || "#F97316";
+
+      var icon = L.divIcon({
+        className: "",
+        html: '<div style="width:30px;height:30px;border-radius:50%;background:' + sevColor + ';border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.3);display:grid;place-items:center;color:#fff;font-size:13px;font-weight:900">!</div>',
+        iconSize: [30, 30],
+        iconAnchor: [15, 15]
+      });
+
+      var marker = L.marker([lat, lon], { icon: icon }).addTo(leafletMap);
+      marker.bindPopup(
+        '<div style="min-width:180px">' +
+        '<strong>' + escapeHtml(inc.type) + '</strong> ' + riskBadge(inc.risk_score || 0) +
+        '<br><small style="color:#666">' + escapeHtml(inc.severity) + ' | ' + escapeHtml(inc.status) + '</small>' +
+        '<br><small>' + escapeHtml(inc.description || "") + '</small>' +
+        '</div>'
+      );
+      incidentMarkers[inc.id || inc.type] = marker;
+    });
+  }
+
+  if (state.layers.flood) {
+    var floodAreas = [
+      { lat: 24.0, lon: 92.5, r: 40000 },
+      { lat: 25.5, lon: 91.8, r: 30000 },
+      { lat: 23.7, lon: 92.7, r: 25000 }
+    ];
+    floodAreas.forEach(function (a) {
+      var c = L.circle([a.lat, a.lon], {
+        radius: a.r,
+        color: "#3b82f6",
+        fillColor: "#3b82f6",
+        fillOpacity: 0.08,
+        weight: 1,
+        dashArray: "5 5"
+      }).addTo(leafletMap);
+      floodCircles.push(c);
+    });
+  }
+
+  if (state.layers.risk) {
+    var riskAreas = [
+      { lat: 24.5, lon: 93.0, r: 35000, color: "#D92D20" },
+      { lat: 23.9, lon: 92.0, r: 28000, color: "#F59E0B" }
+    ];
+    riskAreas.forEach(function (a) {
+      var c = L.circle([a.lat, a.lon], {
+        radius: a.r,
+        color: a.color,
+        fillColor: a.color,
+        fillOpacity: 0.06,
+        weight: 1,
+        dashArray: "5 5"
+      }).addTo(leafletMap);
+      riskCircles.push(c);
+    });
+  }
+}
+
+// ========== WEATHER DATA ==========
+function refreshWeather(lat, lon) {
+  return apiGet("/api/weather?lat=" + lat + "&lon=" + lon)
+    .then(function (w) {
+      if (w.source === "open-meteo") {
+        state.weather.source = "open-meteo";
+        state.weather.location = w.location || state.district;
+        state.weather.temperature = Math.round(Number(w.temperature ?? state.weather.temperature));
+        state.weather.humidity = Math.round(Number(w.humidity ?? state.weather.humidity));
+        state.weather.rainfall = Math.round(Number(w.rainfall ?? state.weather.rainfall));
+        state.weather.wind = Math.round(Number(w.wind_speed ?? w.wind ?? state.weather.wind));
+        state.weather.rainProbability = Math.round(Number(w.precipitation_probability ?? state.weather.rainProbability));
+        state.weather.warning = w.warning || state.weather.warning;
+        if (w.hourly && w.hourly.length) {
+          state.weather.hourly = w.hourly.map(function (h) {
+            return { hour: String(h.hour).padStart(2, "0"), rain: Math.round(Number(h.rain || 0)) };
+          });
+        }
+      }
+      storage.set("ner:weather", state.weather);
+    })
+    .catch(function () { });
+}
+
+// ========== FLOOD DATA ==========
+function refreshFlood(lat, lon) {
+  return apiGet("/api/flood?lat=" + lat + "&lon=" + lon)
+    .then(function (f) {
+      if (f.source === "open-meteo-flood" || f.risk_score !== undefined) {
+        state.weather.floodIndex = Math.round(Number(f.risk_score ?? state.weather.floodIndex));
+      }
+    })
+    .catch(function () { });
+}
+
+// ========== INCIDENTS ==========
+function refreshIncidents() {
+  return apiGet("/api/incidents")
+    .then(function (data) {
+      state.incidents = (data.items || []).map(function (i) { return Object.assign({}, i); });
+    })
+    .catch(function () { });
+}
+
+// ========== FIELD REPORTS ==========
+function handleReportSubmit(e) {
+  e.preventDefault();
+  var form = e.currentTarget;
+  var formData = new FormData(form);
+  var locationStr = formData.get("location") || "23.72710, 92.71760";
+  var parts = locationStr.split(",").map(Number);
+  var lat = parts[0] || 23.7271;
+  var lon = parts[1] || 92.7176;
+  var item = {
+    type: formData.get("type"),
+    severity: formData.get("severity"),
+    description: formData.get("description"),
+    lat: lat,
+    lon: lon,
+    location: { lat: lat, lon: lon },
+    district: state.district
+  };
+
+  if (state.offline) {
+    state.queuedReports.unshift(Object.assign({}, item, { location: lat + ", " + lon, createdAt: new Date().toLocaleTimeString() }));
+    storage.set("ner:queuedReports", state.queuedReports);
+    toast("Saved locally (offline mode)", "warning");
+    form.reset();
+    render();
+    return;
+  }
+
+  apiPost("/api/reports", item)
+    .then(function (resp) {
+      state.incidents.unshift(Object.assign({}, item, {
+        id: resp.id,
+        status: "REPORTED",
+        risk_score: resp.risk ? resp.risk.score : 0,
+        created_at: resp.created_at
+      }));
+      addNotification(
+        "Report: " + item.type,
+        item.severity + ". Risk: " + (resp.risk ? resp.risk.classification : "analyzing"),
+        item.severity ? item.severity.toLowerCase() : "moderate",
+        "Citizen Report"
+      );
+      toast("Report submitted. Risk: " + (resp.risk ? resp.risk.classification : "analyzing"));
+      form.reset();
+      render();
+    })
+    .catch(function (err) {
+      state.queuedReports.unshift(Object.assign({}, item, { location: lat + ", " + lon, createdAt: new Date().toLocaleTimeString() }));
+      storage.set("ner:queuedReports", state.queuedReports);
+      toast("Saved locally: " + err.message, "warning");
+      form.reset();
+      render();
+    });
+}
+
+function syncReports() {
+  if (!state.queuedReports.length) { toast("Nothing to sync"); return; }
+  var synced = 0;
+  var total = state.queuedReports.length;
+
+  function syncNext() {
+    if (synced >= total) {
+      state.queuedReports = [];
+      state.offline = false;
+      storage.set("ner:queuedReports", []);
+      toast(synced + " of " + total + " synced");
+      render();
+      return;
+    }
+    var item = state.queuedReports[synced];
+    var parts = (item.location || "23.7271, 92.7176").split(",").map(Number);
+    var payload = Object.assign({}, item, { location: { lat: parts[0], lon: parts[1] } });
+
+    apiPost("/api/reports", payload)
+      .then(function () { synced++; syncNext(); })
+      .catch(function () { synced++; syncNext(); });
+  }
+  syncNext();
+}
+
+function fillLocationFromGPS() {
+  var input = qs('input[name="location"]');
+  if (!input) return;
+  if (state.userLocation) {
+    input.value = state.userLocation.lat.toFixed(5) + ", " + state.userLocation.lon.toFixed(5);
+    toast("GPS location set");
+  } else if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      function (p) {
+        input.value = p.coords.latitude.toFixed(5) + ", " + p.coords.longitude.toFixed(5);
+        toast("GPS location set");
+      },
+      function () { input.value = "23.72710, 92.71760"; toast("Using default location", "warning"); },
+      { timeout: 5000 }
+    );
+  } else {
+    input.value = "23.72710, 92.71760";
+    toast("Geolocation not available", "warning");
+  }
+}
+
+function broadcastAlert() {
+  var score = computeRisk();
+  var classification = classifyRisk(score);
+  apiPost("/api/alerts/broadcast", {
+    title: "NER Alert Broadcast",
+    message: "Risk: " + riskLabel(score) + " (" + score + "/100). " + (state.lastAIAnalysis ? state.lastAIAnalysis.recommendation : ""),
+    severity: classification.toUpperCase()
+  })
+    .then(function (resp) {
+      addNotification("Alert Broadcast", "Risk " + riskLabel(score) + " broadcast.", classification, "System");
+      toast(resp.sent ? "Sent to " + resp.sent + " recipients" : "Alert broadcast sent");
+    })
+    .catch(function (err) {
+      toast("Broadcast failed: " + err.message, "warning");
+    });
+}
+
+// ========== WEBSOCKET ==========
+function connectWebSocket() {
+  if (ws && ws.readyState === WebSocket.OPEN) return;
+  var wsUrl = appConfig.apiBaseUrl.replace("http", "ws") + "/ws";
+  try {
+    ws = new WebSocket(wsUrl);
+    ws.onopen = function () {
+      console.log("WebSocket connected");
+      updateSidebarHealth(true);
+    };
+    ws.onmessage = function (event) {
+      try {
+        var msg = JSON.parse(event.data);
+        if (msg.type === "incident_created") {
+          var inc = msg.data;
+          state.incidents.unshift(inc);
+          addNotification("Incident: " + (inc.type || inc.id), inc.description || "New incident reported", inc.severity || "medium", "Citizen Report");
+          toast("New incident: " + (inc.type || inc.id));
+          if (leafletMap) updateMapMarkers();
+          render();
+        } else if (msg.type === "incident_updated") {
+          var upd = msg.data;
+          var idx = state.incidents.findIndex(function (i) { return i.id === upd.id; });
+          if (idx >= 0) state.incidents[idx] = Object.assign({}, state.incidents[idx], upd);
+          else state.incidents.unshift(upd);
+          addNotification("Incident Updated", upd.type + " status: " + upd.status, upd.severity || "moderate", "System");
+          if (leafletMap) updateMapMarkers();
+          render();
+        } else if (msg.type === "alert") {
+          var alertData = msg.data;
+          addNotification("Alert: " + alertData.title, alertData.message, alertData.severity || "high", "System");
+          toast("ALERT: " + alertData.title, "danger");
+          render();
+        } else if (msg.type === "weather_update") {
+          var wData = msg.data;
+          if (wData.temperature !== undefined) state.weather.temperature = Math.round(Number(wData.temperature));
+          if (wData.rainfall !== undefined) state.weather.rainfall = Math.round(Number(wData.rainfall));
+          if (wData.wind !== undefined) state.weather.wind = Math.round(Number(wData.wind));
+          if (wData.humidity !== undefined) state.weather.humidity = Math.round(Number(wData.humidity));
+          render();
+        }
+      } catch (e) { }
+    };
+    ws.onclose = function () {
+      console.log("WebSocket disconnected");
+      updateSidebarHealth(false);
+      wsReconnectTimer = setTimeout(connectWebSocket, 5000);
+    };
+    ws.onerror = function () { };
+  } catch (e) { }
+}
+
+function updateSidebarHealth(connected) {
+  var wsHealth = qs("#healthWs");
+  if (wsHealth) {
+    wsHealth.textContent = connected ? "Connected" : "Disconnected";
+    var dot = wsHealth.previousElementSibling;
+    if (dot) {
+      dot.className = "sidebar-health-dot " + (connected ? "healthy" : "");
+    }
+  }
+}
+
+// ========== REFRESH ALL DATA ==========
+function refreshAllData() {
+  var loc = state.userLocation || districtLocation();
+
+  apiGet("/api/health")
+    .then(function (health) {
+      state.backendOnline = true;
+      var apiHealth = qs("#healthApi");
+      if (apiHealth) { apiHealth.textContent = "Online"; }
+    })
+    .catch(function () {
+      state.backendOnline = false;
+      var apiHealth = qs("#healthApi");
+      if (apiHealth) { apiHealth.textContent = "Offline"; }
+    });
+
+  refreshWeather(loc.lat, loc.lon).then(function () {
+    var wHealth = qs("#healthWeather");
+    if (wHealth) wHealth.textContent = state.weather.source === "open-meteo" ? "Live" : "Demo";
+    runAIAnalysis();
+    render();
+  });
+
+  refreshFlood(loc.lat, loc.lon).then(function () { render(); });
+
+  apiGet("/api/satellite/latest?lat=" + loc.lat + "&lon=" + loc.lon + "&days=30")
+    .then(function (sat) {
+      var satHealth = qs("#healthSat");
+      if (satHealth) satHealth.textContent = "Synced";
+    })
+    .catch(function () { });
+
+  refreshIncidents().then(function () {
+    runAIAnalysis();
+    render();
+  });
+}
+
 // ========== AI RISK ANALYSIS ENGINE ==========
 function runAIAnalysis() {
-  const score = computeRisk();
-  const classification = classifyRisk(score);
-  const prev = state.previousRiskScore;
-  const rising = score > prev + 5;
-  const falling = score < prev - 5;
+  var score = computeRisk();
+  var classification = classifyRisk(score);
+  var prev = state.previousRiskScore;
+  var rising = score > prev + 5;
+  var falling = score < prev - 5;
 
-  const factors = riskFactors();
-  const topFactors = [...factors].sort((a, b) => b.value - a.value).slice(0, 3);
+  var factors = riskFactors();
+  var topFactors = factors.slice().sort(function (a, b) { return b.value - a.value; }).slice(0, 3);
 
-  let recommendation = "";
+  var recommendation = "";
   if (classification === "critical") {
     recommendation = "EVACUATE immediately. Severe flood/landslide risk. Avoid all travel in affected areas.";
   } else if (classification === "high") {
@@ -193,788 +1364,143 @@ function runAIAnalysis() {
     recommendation = "Conditions favorable. Standard precautions apply.";
   }
 
-  const analysis = {
-    score, classification, rising, falling, timestamp: new Date().toISOString(),
-    topFactors: topFactors.map(f => `${f.label}: ${f.value}/100`),
-    recommendation,
-    weatherSummary: `${state.weather.temperature}C, ${state.weather.rainfall}mm rain, ${state.weather.wind}km/h wind`,
-    floodSummary: `Flood index: ${state.weather.floodIndex}/100`,
-    satelliteSummary: liveData.satellite?.summary || "Sentinel data pending"
+  var analysis = {
+    score: score,
+    classification: classification,
+    rising: rising,
+    falling: falling,
+    timestamp: new Date().toISOString(),
+    topFactors: topFactors.map(function (f) { return f.label + ": " + f.value + "/100"; }),
+    recommendation: recommendation,
+    weatherSummary: state.weather.temperature + "C, " + state.weather.rainfall + "mm rain, " + state.weather.wind + "km/h wind",
+    floodSummary: "Flood index: " + state.weather.floodIndex + "/100"
   };
 
   state.lastAIAnalysis = analysis;
   state.previousRiskScore = score;
 
   if (rising && score >= state.thresholds.elevated) {
-    addNotification(`Risk Rising: ${riskLabel(score)}`, `AI detected increasing risk (${prev} -> ${score}). ${recommendation}`, classification === "critical" ? "critical" : "high", "AI Engine");
-    toast(`ALERT: Risk rising to ${riskLabel(score)}!`);
+    addNotification("Risk Rising: " + riskLabel(score), "AI detected increasing risk (" + prev + " -> " + score + "). " + recommendation, classification === "critical" ? "critical" : "high", "AI Engine");
+    toast("ALERT: Risk rising to " + riskLabel(score) + "!", "danger");
   }
 
   if (classification === "critical" && prev < state.thresholds.critical) {
-    addNotification("CRITICAL: Immediate Danger", `Disaster risk score reached CRITICAL (${score}/100). ${recommendation}`, "critical", "AI Engine");
-    toast("CRITICAL ALERT: Immediate danger!");
+    addNotification("CRITICAL: Immediate Danger", "Disaster risk score reached CRITICAL (" + score + "/100). " + recommendation, "critical", "AI Engine");
+    toast("CRITICAL ALERT: Immediate danger!", "danger");
   }
 
   if (falling && prev >= state.thresholds.high && score < state.thresholds.high) {
-    addNotification("Risk Decreasing", `Risk dropped from ${riskLabel(prev)} to ${riskLabel(score)}.`, "moderate", "AI Engine");
+    addNotification("Risk Decreasing", "Risk dropped from " + riskLabel(prev) + " to " + riskLabel(score) + ".", "moderate", "AI Engine");
   }
 
-  const w = state.weather;
-  if (w.rainfall > 60 && w.floodIndex > 60) {
-    const key = "heavy_rain_flood";
-    if (!state.notifications.some(n => n._key === key && Date.now() - new Date(n.time).getTime() < 3600000)) {
-      const n = addNotification("Heavy Rain + High Flood Risk", `Rainfall ${w.rainfall}mm + flood index ${w.floodIndex}. Flash flood possible.`, "high", "Weather AI");
-      n._key = key;
+  var w = state.weather;
+  if (w.rainfall > state.thresholds.rainfall && w.floodIndex > state.thresholds.flood) {
+    var key = "heavy_rain_flood";
+    if (!state.notifications.some(function (n) { return n._key === key && Date.now() - new Date(n.time).getTime() < 3600000; })) {
+      var notif = addNotification("Heavy Rain + High Flood Risk", "Rainfall " + w.rainfall + "mm + flood index " + w.floodIndex + ". Flash flood possible.", "high", "Weather AI");
+      notif._key = key;
     }
   }
 
   if (w.wind > 50) {
-    const key = "high_wind";
-    if (!state.notifications.some(n => n._key === key && Date.now() - new Date(n.time).getTime() < 3600000)) {
-      const n = addNotification("High Wind Warning", `Wind ${w.wind} km/h. Structural damage risk.`, "high", "Weather AI");
-      n._key = key;
+    var windKey = "high_wind";
+    if (!state.notifications.some(function (n) { return n._key === windKey && Date.now() - new Date(n.time).getTime() < 3600000; })) {
+      var windNotif = addNotification("High Wind Warning", "Wind " + w.wind + " km/h. Structural damage risk.", "high", "Weather AI");
+      windNotif._key = windKey;
     }
   }
-
-  if (liveData.flood?.risk_level === "high" || liveData.flood?.risk_level === "critical") {
-    const key = "flood_alert";
-    if (!state.notifications.some(n => n._key === key && Date.now() - new Date(n.time).getTime() < 3600000)) {
-      const n = addNotification("Flood Alert: River Levels Rising", `River discharge elevated. Risk: ${liveData.flood.risk_level}.`, liveData.flood.risk_level, "Flood AI");
-      n._key = key;
-    }
-  }
-
-  return analysis;
-}
-
-// ========== LOGIN ==========
-function initLogin() {
-  const loginScreen = qs("#loginScreen");
-  const appShell = qs("#appShell");
-  const landingPage = qs("#landingPage");
-  const savedUser = storage.get("ner:user", null);
-
-  if (savedUser) {
-    liveData.user = savedUser;
-    liveData.userLocation = storage.get("ner:userLocation", null);
-    loginScreen.classList.remove("visible");
-    loginScreen.classList.add("hidden");
-    if (landingPage) { landingPage.classList.add("hidden"); }
-    appShell.classList.remove("hidden");
-    appShell.classList.add("visible");
-    return true;
-  }
-
-  loginScreen.classList.remove("visible");
-  loginScreen.classList.add("hidden");
-  appShell.classList.add("hidden");
-  if (landingPage) { landingPage.classList.remove("hidden"); }
-  return false;
-}
-
-function showApp() {
-  const landingPage = qs("#landingPage");
-  qs("#loginScreen").classList.remove("visible");
-  qs("#loginScreen").classList.add("hidden");
-  if (landingPage) { landingPage.classList.add("hidden"); }
-  qs("#appShell").classList.remove("hidden");
-  qs("#appShell").classList.add("visible");
-}
-
-function showLogin() {
-  const landingPage = qs("#landingPage");
-  if (landingPage) { landingPage.classList.add("hidden"); }
-  qs("#loginScreen").classList.add("visible");
-  qs("#loginScreen").classList.remove("hidden");
-  qs("#appShell").classList.add("hidden");
-  qs("#appShell").classList.remove("visible");
-}
-
-function initLoginForm() {
-  qs("#loginForm").addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const email = qs("#loginEmail").value.trim().toLowerCase();
-    const password = qs("#loginPassword").value;
-    const errEl = qs("#loginError");
-
-    if (!email || !password) { errEl.textContent = "Enter email and password."; return; }
-
-    const name = email.split("@")[0].replace(/[._]/g, " ").replace(/\b\w/g, c => c.toUpperCase());
-    liveData.user = { email, name, role: "citizen", district: "Aizawl" };
-    storage.set("ner:user", liveData.user);
-    errEl.textContent = "";
-
-    toast("Requesting location access...");
-    const loc = await requestLocation();
-    if (loc) {
-      toast(`Location acquired: ${loc.lat.toFixed(4)}, ${loc.lon.toFixed(4)}`);
-    } else {
-      toast("Location not available. Using default area.");
-    }
-
-    showApp();
-    render();
-    refreshLiveData({ quiet: false });
-    connectWebSocket();
-    watchUserLocation();
-    startAutoRefresh();
-    toast(`Welcome, ${name}!`);
-  });
-
-  qs("#logoutButton").addEventListener("click", () => {
-    liveData.user = null;
-    storage.removeItem("ner:user");
-    if (ws) ws.close();
-    if (state.autoRefreshTimer) clearInterval(state.autoRefreshTimer);
-    const landingPage = qs("#landingPage");
-    const loginScreen = qs("#loginScreen");
-    const appShell = qs("#appShell");
-    loginScreen.classList.remove("visible");
-    loginScreen.classList.add("hidden");
-    appShell.classList.remove("visible");
-    appShell.classList.add("hidden");
-    if (landingPage) { landingPage.classList.remove("hidden"); }
-    toast("Logged out.");
-  });
-
-  qs("#googleLoginBtn").addEventListener("click", async () => {
-    if (window.nerFirebase?.signIn) {
-      try { await window.nerFirebase.signIn(); }
-      catch (err) {
-        const msg = err.message || String(err);
-        if (msg.includes("unauthorized-domain")) {
-          qs("#loginError").textContent = "Firebase: add 127.0.0.1 to authorized domains in Firebase Console.";
-        } else { qs("#loginError").textContent = msg; }
-      }
-    } else { qs("#loginError").textContent = "Firebase loading... try again in a moment."; }
-  });
-}
-
-// ========== LEAFLET MAP ==========
-function initLeafletMap() {
-  const container = qs("#leafletMap");
-  if (!container) return;
-  if (leafletMap) { try { leafletMap.remove(); } catch(e) {} leafletMap = null; }
-
-  const userLoc = liveData.userLocation;
-  const center = userLoc ? [userLoc.lat, userLoc.lon] : [districtLocation().lat, districtLocation().lon];
-  const zoom = userLoc ? 12 : 8;
-
-  leafletMap = L.map("leafletMap", { zoomControl: true }).setView(center, zoom);
-
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    attribution: '&copy; OpenStreetMap contributors', maxZoom: 18
-  }).addTo(leafletMap);
-
-  L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
-    attribution: '&copy; Esri', maxZoom: 18, opacity: 0.3
-  }).addTo(leafletMap);
-
-  if (userLoc) updateUserLocationMarker();
-
-  const searchBox = qs("#mapSearchInput");
-  if (searchBox) {
-    searchBox.addEventListener("keydown", async (e) => {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        const query = searchBox.value.trim();
-        if (!query) return;
-        toast("Searching...");
-        try {
-          const r = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5`);
-          const results = await r.json();
-          if (results.length > 0) {
-            const lat = parseFloat(results[0].lat);
-            const lon = parseFloat(results[0].lon);
-            leafletMap.setView([lat, lon], 13);
-            L.marker([lat, lon]).addTo(leafletMap).bindPopup(`<strong>${results[0].display_name}</strong>`).openPopup();
-            toast(`Found: ${results[0].display_name.split(",")[0]}`);
-          } else {
-            toast("Place not found.");
-          }
-        } catch (err) { toast("Search failed."); }
-      }
-    });
-  }
-
-  updateMapMarkers();
-  setTimeout(() => leafletMap.invalidateSize(), 200);
-}
-
-function updateUserLocationMarker() {
-  if (!leafletMap || !liveData.userLocation) return;
-  const { lat, lon } = liveData.userLocation;
-
-  if (userMarker) leafletMap.removeLayer(userMarker);
-
-  const icon = L.divIcon({
-    className: "",
-    html: `<div style="width:20px;height:20px;border-radius:50%;background:#3b82f6;border:3px solid #fff;box-shadow:0 0 12px rgba(59,130,246,0.6);animation:pulse 2s infinite"></div>`,
-    iconSize: [20, 20], iconAnchor: [10, 10]
-  });
-
-  userMarker = L.marker([lat, lon], { icon }).addTo(leafletMap);
-  userMarker.bindPopup("<strong>You are here</strong>");
-}
-
-function updateMapMarkers() {
-  if (!leafletMap) return;
-
-  Object.values(incidentMarkers).forEach(m => leafletMap.removeLayer(m));
-  incidentMarkers = {};
-
-  if (state.layers.incidents) {
-    state.incidents.filter(i => i.status !== "RESOLVED").forEach(inc => {
-      const lat = inc.lat || inc.location?.lat || 23.727;
-      const lon = inc.lon || inc.location?.lon || 92.717;
-      const sevColor = { Critical: "#b54535", High: "#c97855", Medium: "#d89b45", Moderate: "#d89b45", Low: "#7b7a4f" }[inc.severity] || "#c97855";
-      const icon = L.divIcon({
-        className: "",
-        html: `<div style="width:30px;height:30px;border-radius:50%;background:${sevColor};border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.3);display:grid;place-items:center;color:#fff;font-size:13px;font-weight:900">!</div>`,
-        iconSize: [30, 30], iconAnchor: [15, 15]
-      });
-      const marker = L.marker([lat, lon], { icon }).addTo(leafletMap);
-      marker.bindPopup(`<div style="min-width:180px"><strong>${inc.type}</strong> ${riskBadge(inc.risk_score || 0)}<br><small>${inc.severity} | ${inc.status}</small><br><small>${inc.description || ""}</small></div>`);
-      incidentMarkers[inc.id || inc.type] = marker;
-    });
-  }
-
-  if (state.layers.flood) {
-    const floodAreas = [
-      { lat: 24.0, lon: 92.5, r: 40000 }, { lat: 25.5, lon: 91.8, r: 30000 }, { lat: 23.7, lon: 92.7, r: 25000 }
-    ];
-    floodAreas.forEach(a => {
-      L.circle([a.lat, a.lon], { radius: a.r, color: "#3b82f6", fillColor: "#3b82f6", fillOpacity: 0.08, weight: 1, dashArray: "5 5" }).addTo(leafletMap);
-    });
-  }
-
-  if (state.layers.risk) {
-    const riskAreas = [
-      { lat: 24.5, lon: 93.0, r: 35000, color: "#ef4444" }, { lat: 23.9, lon: 92.0, r: 28000, color: "#f59e0b" }
-    ];
-    riskAreas.forEach(a => {
-      L.circle([a.lat, a.lon], { radius: a.r, color: a.color, fillColor: a.color, fillOpacity: 0.06, weight: 1, dashArray: "5 5" }).addTo(leafletMap);
-    });
-  }
-}
-
-// ========== WEBSOCKET ==========
-function connectWebSocket() {
-  if (ws && ws.readyState === WebSocket.OPEN) return;
-  const wsUrl = appConfig.apiBaseUrl.replace("http", "ws") + "/ws";
-  try {
-    ws = new WebSocket(wsUrl);
-    ws.onopen = () => { console.log("WS connected"); updateSystemHealth(); };
-    ws.onmessage = (event) => {
-      try {
-        const msg = JSON.parse(event.data);
-        if (msg.type === "incident_created" || msg.type === "incident_updated") {
-          const d = msg.data;
-          const idx = state.incidents.findIndex(i => i.id === d.id);
-          if (idx >= 0) state.incidents[idx] = { ...state.incidents[idx], ...d };
-          else state.incidents.unshift(d);
-          addNotification(`Incident: ${d.type || d.id}`, d.description || "New incident", d.severity || "medium", "Citizen Report");
-          toast(`New incident: ${d.type || d.id}`);
-          if (leafletMap) updateMapMarkers();
-          render();
-        } else if (msg.type === "alert") {
-          addNotification(`Alert: ${msg.data.title}`, msg.data.message, msg.data.severity || "high", "System");
-          toast(`ALERT: ${msg.data.title}`);
-          render();
-        }
-      } catch(e) {}
-    };
-    ws.onclose = () => { wsReconnectTimer = setTimeout(connectWebSocket, 5000); updateSystemHealth(); };
-    ws.onerror = () => {};
-  } catch(e) {}
 }
 
 // ========== AUTO REFRESH ==========
 function startAutoRefresh() {
   if (state.autoRefreshTimer) clearInterval(state.autoRefreshTimer);
-  state.autoRefreshTimer = setInterval(() => {
-    if (!state.offline && liveData.user) {
-      refreshLiveData({ quiet: true });
+  state.autoRefreshTimer = setInterval(function () {
+    if (!state.offline && state.user) {
+      refreshAllData();
     }
   }, 300000);
 }
 
-// ========== KPI / DASHBOARD ==========
-function kpis() {
-  const score = computeRisk();
-  const active = state.incidents.filter(i => i.status !== "RESOLVED");
-  const unread = state.notifications.filter(n => !n.read).length;
-  return [
-    { label: "Risk Score", value: score, detail: riskLabel(score), highlight: classifyRisk(score) },
-    { label: "Temperature", value: `${state.weather.temperature}C`, detail: state.weather.source === "open-meteo" ? "LIVE" : "Demo" },
-    { label: "Rainfall", value: `${state.weather.rainfall}mm`, detail: `${state.weather.rainProbability}% chance` },
-    { label: "Flood Index", value: state.weather.floodIndex, detail: "River discharge" },
-    { label: "Active Incidents", value: active.length, detail: "Reports" },
-    { label: "Alerts", value: unread, detail: `${state.notifications.length} total` }
-  ];
-}
+// ========== GLOBAL SEARCH ==========
+function handleGlobalSearch(query) {
+  if (!query || query.length < 2) return;
+  var q = query.toLowerCase();
 
-function renderKpis() {
-  qs("#kpiGrid").innerHTML = kpis().map(m => `
-    <article class="metric-card interactive-card ${m.highlight ? 'risk-' + m.highlight : ''}">
-      <span>${m.label}</span><strong>${m.value}</strong><small>${m.detail}</small>
-    </article>`).join("");
-}
+  var matchedIncidents = state.incidents.filter(function (i) {
+    return (i.type && i.type.toLowerCase().indexOf(q) !== -1) ||
+      (i.description && i.description.toLowerCase().indexOf(q) !== -1) ||
+      (i.severity && i.severity.toLowerCase().indexOf(q) !== -1);
+  });
 
-function renderRiskPanel() {
-  const score = computeRisk();
-  const analysis = state.lastAIAnalysis;
-  return `
-    <section class="panel">
-      <header class="panel-header"><div><p class="eyebrow">AI Risk Engine</p><h2>Disaster Risk</h2></div>${riskBadge(score)}</header>
-      <div class="panel-body">
-        <div class="risk-dial" style="--risk-angle:${score * 3.6}deg">
-          <div class="dial-ring"><div class="dial-core"><span>Score</span><strong>${score}</strong></div></div>
-          <p class="muted">${analysis?.recommendation || "Analyzing..."}</p>
-        </div>
-        <ul class="risk-list" style="margin-top:14px">
-          ${riskFactors().map(f => `
-            <li class="risk-row">
-              <header><strong>${f.label}</strong><small>${f.value}/100</small></header>
-              <div class="bar-track"><div class="bar-fill" style="width:${f.value}%"></div></div>
-              <small class="muted">${f.note}</small>
-            </li>`).join("")}
-        </ul>
-      </div>
-    </section>`;
-}
+  var matchedDistricts = Object.keys(districtCoordinates).filter(function (d) {
+    return d.toLowerCase().indexOf(q) !== -1;
+  });
 
-function renderAlertsPanel() {
-  const recent = state.notifications.slice(0, 5);
-  return `
-    <section class="panel">
-      <header class="panel-header"><div><p class="eyebrow">Notifications</p><h2>Recent Alerts</h2></div>
-        <button class="ghost-button" type="button" data-action="view-alerts" style="min-height:28px;padding:2px 8px;font-size:0.75rem">View All</button></header>
-      <div class="panel-body"><ul class="alert-list">
-        ${recent.length ? recent.map(a => `
-          <li class="alert-item ${a.severity === 'critical' ? 'critical' : ''}">
-            <strong>${a.title}</strong>
-            <small>${a.message}</small>
-            <small style="color:#999">${new Date(a.time).toLocaleString()}</small>
-          </li>`).join("") : '<li class="alert-item"><strong>No alerts yet</strong><small>AI is monitoring conditions.</small></li>'}
-      </ul></div>
-    </section>`;
-}
-
-// ========== VIEWS ==========
-function renderDashboard() {
-  return `
-    <div class="dashboard-grid">
-      <div style="position:relative">
-        <div id="leafletMap" style="min-height:500px;border-radius:var(--radius);border:1px solid var(--border)"></div>
-      </div>
-      <aside class="side-stack">${renderRiskPanel()}${renderAlertsPanel()}</aside>
-    </div>
-    <section class="grid-3" style="margin-top:16px">
-      <article class="panel">
-        <header class="panel-header"><div><p class="eyebrow">Weather</p><h2>${state.weather.location}</h2></div></header>
-        <div class="panel-body">
-          <p style="font-size:2rem;font-weight:800;margin:0">${state.weather.temperature}C</p>
-          <p class="muted">${state.weather.warning}</p>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
-            <small>Rain: ${state.weather.rainfall}mm</small>
-            <small>Wind: ${state.weather.wind}km/h</small>
-            <small>Humidity: ${state.weather.humidity}%</small>
-            <small>Flood: ${state.weather.floodIndex}/100</small>
-          </div>
-        </div>
-      </article>
-      <article class="panel">
-        <header class="panel-header"><div><p class="eyebrow">Satellite</p><h2>Intelligence</h2></div></header>
-        <div class="panel-body">
-          <p class="muted">${liveData.satellite?.summary || "Sentinel imagery analysis pending."}</p>
-          <div class="notice" style="margin-top:8px"><strong>Anomaly: ${Number(liveData.satellite?.risk_score || 54)}/100</strong>
-            <p class="muted" style="margin:4px 0 0">${liveData.satellite?.configured ? "Copernicus connected." : "Using estimated data."}</p></div>
-        </div>
-      </article>
-      <article class="panel">
-        <header class="panel-header"><div><p class="eyebrow">AI Analysis</p><h2>Status</h2></div></header>
-        <div class="panel-body">
-          <p class="muted">${state.lastAIAnalysis?.recommendation || "Waiting for data..."}</p>
-          ${state.lastAIAnalysis?.rising ? '<p style="color:var(--danger);font-weight:700;margin-top:8px">TREND: Risk increasing</p>' : ''}
-          ${state.lastAIAnalysis?.falling ? '<p style="color:var(--olive);font-weight:700;margin-top:8px">TREND: Risk decreasing</p>' : ''}
-          <p class="muted" style="margin-top:8px;font-size:0.75rem">Top factors: ${state.lastAIAnalysis?.topFactors?.join(", ") || "Analyzing..."}</p>
-        </div>
-      </article>
-    </section>`;
-}
-
-function renderMapView() {
-  return `
-    <section class="section-header">
-      <div><p class="eyebrow">Real-time GIS</p><h2>Disaster Map</h2>
-        <p>Your location shown as blue dot. Search any place below.</p></div>
-      <div class="action-row">
-        <button class="ghost-button" type="button" data-action="center-me">My Location</button>
-        <button class="ghost-button" type="button" data-action="center-map">Center NER</button>
-        <button class="ghost-button" type="button" data-action="refresh-map">Refresh</button>
-      </div>
-    </section>
-    <div style="margin-top:12px;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden">
-      <div style="padding:8px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-        <input id="mapSearchInput" type="text" placeholder="Search any place..." style="flex:1;min-width:200px;border:1px solid var(--border);border-radius:var(--radius);padding:8px 12px;font-size:0.9rem" />
-        <div class="layer-list">
-          ${Object.keys(state.layers).map(k => `<button class="chip ${state.layers[k] ? "active" : ""}" type="button" data-layer="${k}">${k[0].toUpperCase() + k.slice(1)}</button>`).join("")}
-        </div>
-      </div>
-      <div id="leafletMap" style="height:600px"></div>
-    </div>`;
-}
-
-function renderWeather() {
-  const w = state.weather;
-  return `
-    <section class="panel">
-      <header class="panel-header">
-        <div><p class="eyebrow">${w.source === "open-meteo" ? "LIVE from Open-Meteo" : "Weather data"}</p>
-          <h2>${w.location} Weather</h2><p>${w.warning}</p></div>
-        ${riskBadge(Math.max(w.rainfall, w.floodIndex))}
-      </header>
-      <div class="panel-body"><div class="weather-strip">
-        <article class="weather-card"><span class="muted">Temperature</span><strong>${w.temperature}C</strong></article>
-        <article class="weather-card"><span class="muted">Humidity</span><strong>${w.humidity}%</strong></article>
-        <article class="weather-card"><span class="muted">Rainfall</span><strong>${w.rainfall}mm</strong></article>
-        <article class="weather-card"><span class="muted">Wind</span><strong>${w.wind}km/h</strong></article>
-        <article class="weather-card"><span class="muted">Rain %</span><strong>${w.rainProbability}%</strong></article>
-        <article class="weather-card"><span class="muted">Flood</span><strong>${w.floodIndex}</strong></article>
-      </div></div>
-    </section>
-    <section class="grid-2" style="margin-top:16px">
-      <article class="panel">
-        <header class="panel-header"><div><p class="eyebrow">Hourly</p><h2>Rainfall Forecast</h2></div></header>
-        <div class="panel-body"><div class="forecast-bars">
-          ${w.hourly.length ? w.hourly.map(h => `<div class="forecast-bar"><span style="height:${Math.max(20, h.rain * 2)}px"></span><strong>${h.rain}</strong><small>${h.hour}:00</small></div>`).join("") : '<p class="muted">No hourly data.</p>'}
-        </div></div>
-      </article>
-      <article class="panel">
-        <header class="panel-header"><div><p class="eyebrow">Roads</p><h2>Weather Impact</h2></div></header>
-        <div class="panel-body"><ul class="road-list">
-          ${w.affectedRoads.map((r, i) => `<li class="road-item"><header><strong>${r}</strong>${riskBadge(58 + i * 8)}</header></li>`).join("")}
-        </ul></div>
-      </article>
-    </section>`;
-}
-
-function renderAlerts() {
-  return `
-    <section class="section-header">
-      <div><p class="eyebrow">Notifications</p><h2>All Alerts</h2>
-        <p>AI-generated notifications from real-time data analysis.</p></div>
-      <div class="action-row">
-        <button class="ghost-button" type="button" data-action="mark-all-read">Mark All Read</button>
-        <button class="ghost-button" type="button" data-action="clear-alerts">Clear All</button>
-      </div>
-    </section>
-    <div style="margin-top:16px">
-      ${state.notifications.length ? state.notifications.map(n => `
-        <article class="alert-item ${n.severity === 'critical' ? 'critical' : ''}" style="margin-bottom:8px;padding:14px;border-left:4px solid ${n.severity === 'critical' ? 'var(--danger)' : n.severity === 'high' ? 'var(--amber)' : 'var(--olive)'}">
-          <div style="display:flex;justify-content:space-between;align-items:start;gap:12px">
-            <div>
-              <strong>${n.title}</strong>
-              <p style="margin:4px 0 0;color:var(--muted);font-size:0.85rem">${n.message}</p>
-              <small style="color:#999">${new Date(n.time).toLocaleString()} - ${n.source}</small>
-            </div>
-            ${riskBadge(n.severity === 'critical' ? 90 : n.severity === 'high' ? 70 : n.severity === 'moderate' ? 40 : 20)}
-          </div>
-        </article>`).join("") : '<div class="panel" style="padding:40px;text-align:center"><p class="muted">No notifications. AI is monitoring.</p></div>'}
-    </div>`;
-}
-
-function renderReport() {
-  return `
-    <section class="grid-2">
-      <form class="form-card" id="reportForm">
-        <p class="eyebrow">Citizen Report</p><h2>Report an Incident</h2>
-        <p class="muted" style="margin-bottom:14px">Report floods, landslides, road damage. Your report feeds the AI risk engine.</p>
-        <div class="form-grid">
-          <label>Type <select class="form-control" name="type" required>
-            <option>Flood</option><option>Landslide</option><option>Road Damage</option><option>Bridge Damage</option>
-            <option>Heavy Rainfall</option><option>Road Blockage</option><option>Accident</option><option>Other</option></select></label>
-          <label>Severity <select class="form-control" name="severity" required>
-            <option>Medium</option><option>Low</option><option>High</option><option>Critical</option></select></label>
-          <label class="full-span">Location <input class="form-control" name="location" value="${liveData.userLocation ? liveData.userLocation.lat.toFixed(5) + ', ' + liveData.userLocation.lon.toFixed(5) : '23.727, 92.717'}" required /></label>
-          <label class="full-span">Description <textarea name="description" placeholder="Describe what you see..." required></textarea></label>
-        </div>
-        <div class="action-row" style="margin-top:14px">
-          <button class="button" type="submit">Submit Report</button>
-          <button class="ghost-button" type="button" data-action="use-location">Use My GPS</button>
-          <button class="ghost-button" type="button" data-action="offline">${state.offline ? "Go Online" : "Offline Mode"}</button>
-        </div>
-      </form>
-      <aside class="side-stack">
-        <section class="panel">
-          <header class="panel-header"><div><p class="eyebrow">Queue</p><h2>${state.queuedReports.length} pending</h2></div>
-            <button class="ghost-button" type="button" data-action="sync">Sync</button></header>
-          <div class="panel-body">${state.queuedReports.length
-            ? `<ul class="timeline">${state.queuedReports.map(i => `<li class="timeline-item"><strong>${i.type}</strong><small>${i.severity} - ${i.createdAt}</small></li>`).join("")}</ul>`
-            : `<p class="muted">No pending reports.</p>`}</div>
-        </section>
-        <section class="panel">
-          <header class="panel-header"><div><p class="eyebrow">Recent</p><h2>Incidents</h2></div></header>
-          <div class="panel-body"><ul class="timeline">
-            ${state.incidents.slice(0, 8).map(i => `
-              <li class="timeline-item"><strong>${i.type}</strong>
-                <small>${i.severity} | ${i.status} | ${i.created_at ? new Date(i.created_at).toLocaleDateString() : ""}</small>
-              </li>`).join("") || '<li class="timeline-item"><small>No incidents yet.</small></li>'}
-          </ul></div>
-        </section>
-      </aside>
-    </section>`;
-}
-
-function renderEmergency() {
-  const score = computeRisk();
-  return `
-    <section class="emergency-hero ${state.emergency ? "active" : ""}">
-      <p class="eyebrow">Emergency Mode</p>
-      <h2>${state.emergency ? "EMERGENCY ACTIVE" : "Emergency Ready"}</h2>
-      <p class="muted">${state.emergency ? "Emergency protocols active." : "Activate for emergency protocols."}</p>
-      <div class="action-row">
-        <button class="${state.emergency ? "danger-button" : "button"}" type="button" data-action="emergency">
-          ${state.emergency ? "Deactivate" : "Activate Emergency"}</button>
-        <button class="ghost-button" type="button" data-action="send-alert">Broadcast Alert</button>
-      </div>
-    </section>
-    <section class="grid-3" style="margin-top:16px">
-      <article class="panel"><header class="panel-header"><div><p class="eyebrow">Risk</p><h2>Current Level</h2></div></header>
-        <div class="panel-body" style="text-align:center">
-          <p style="font-size:3rem;font-weight:800;margin:0">${score}</p>
-          ${riskBadge(score)}
-          <p class="muted" style="margin-top:8px">${state.lastAIAnalysis?.recommendation || ""}</p>
-        </div>
-      </article>
-      <article class="panel"><header class="panel-header"><div><p class="eyebrow">Incidents</p><h2>Active</h2></div></header>
-        <div class="panel-body"><ul class="road-list">
-          ${state.incidents.filter(i => i.status !== "RESOLVED").slice(0, 5).map(i => `
-            <li class="road-item"><header><strong>${i.type}</strong>${riskBadge(i.risk_score || 0)}</header><small>${i.severity} - ${i.status}</small></li>`).join("") || '<li class="road-item"><small>No active incidents.</small></li>'}
-        </ul></div>
-      </article>
-      <article class="panel"><header class="panel-header"><div><p class="eyebrow">Weather</p><h2>Conditions</h2></div></header>
-        <div class="panel-body">
-          <p style="font-size:1.5rem;font-weight:800;margin:0">${state.weather.temperature}C</p>
-          <p class="muted">${state.weather.rainfall}mm rain, ${state.weather.wind}km/h wind</p>
-          <p class="muted" style="margin-top:4px">${state.weather.warning}</p>
-        </div>
-      </article>
-    </section>`;
-}
-
-function renderView() {
-  const root = qs("#viewRoot");
-  const views = { dashboard: renderDashboard, map: renderMapView, weather: renderWeather, alerts: renderAlerts, report: renderReport, emergency: renderEmergency };
-  root.innerHTML = (views[state.view] || views.dashboard)();
-  attachViewHandlers(root);
-  if (state.view === "dashboard" || state.view === "map") setTimeout(() => { initLeafletMap(); updateMapMarkers(); }, 100);
-}
-
-// ========== HANDLERS ==========
-function attachViewHandlers(root) {
-  qsa("[data-layer]", root).forEach(b => b.addEventListener("click", () => { state.layers[b.dataset.layer] = !state.layers[b.dataset.layer]; saveState(); if (leafletMap) updateMapMarkers(); render(); }));
-
-  qsa("[data-action]", root).forEach(b => b.addEventListener("click", () => {
-    const a = b.dataset.action;
-    if (a === "emergency") toggleEmergency();
-    if (a === "send-alert") sendAlertToBackend();
-    if (a === "offline") { state.offline = !state.offline; toast(state.offline ? "Offline mode" : "Online"); render(); }
-    if (a === "sync") syncReports();
-    if (a === "use-location") fillLocation();
-    if (a === "view-alerts") setView("alerts");
-    if (a === "mark-all-read") { state.notifications.forEach(n => n.read = true); storage.set("ner:notifications", state.notifications); toast("All read."); render(); }
-    if (a === "clear-alerts") { state.notifications = []; storage.set("ner:notifications", []); toast("Cleared."); render(); }
-    if (a === "center-me") {
-      if (liveData.userLocation && leafletMap) {
-        leafletMap.setView([liveData.userLocation.lat, liveData.userLocation.lon], 13);
-      } else { toast("Location not available."); }
-    }
-    if (a === "center-map" && leafletMap) { const loc = districtLocation(); leafletMap.setView([loc.lat, loc.lon], 8); }
-    if (a === "refresh-map" && leafletMap) { updateMapMarkers(); toast("Map refreshed."); }
-  }));
-
-  const form = qs("#reportForm", root);
-  if (form) form.addEventListener("submit", handleReportSubmit);
-}
-
-async function handleReportSubmit(e) {
-  e.preventDefault();
-  const form = e.currentTarget;
-  const data = new FormData(form);
-  const [lat, lon] = (data.get("location") || "23.727, 92.717").split(",").map(Number);
-  const item = { type: data.get("type"), severity: data.get("severity"), description: data.get("description"), location: { lat, lon }, district: state.district };
-
-  if (state.offline) {
-    state.queuedReports.unshift({ ...item, location: `${lat}, ${lon}`, createdAt: new Date().toLocaleTimeString() });
-    toast("Saved locally.");
+  if (matchedIncidents.length > 0) {
+    toast("Found " + matchedIncidents.length + " incident(s)");
+  } else if (matchedDistricts.length > 0) {
+    state.district = matchedDistricts[0];
+    var loc = districtCoordinates[matchedDistricts[0]];
+    if (leafletMap && loc) leafletMap.setView([loc.lat, loc.lon], 10);
+    toast("Navigating to " + matchedDistricts[0]);
   } else {
-    try {
-      const resp = await apiPost("/api/reports", item);
-      state.incidents.unshift({ ...item, id: resp.id, status: "REPORTED", risk_score: resp.risk?.score || 0, lat, lon, created_at: resp.created_at });
-      addNotification(`Report: ${item.type}`, `${item.severity}. Risk: ${resp.risk?.classification || "analyzing"}`, item.severity?.toLowerCase(), "Citizen Report");
-      toast(`Report submitted. Risk: ${resp.risk?.classification}`);
-    } catch (err) {
-      state.queuedReports.unshift({ ...item, location: `${lat}, ${lon}`, createdAt: new Date().toLocaleTimeString() });
-      toast(`Saved locally: ${err.message}`);
-    }
+    toast("No results for: " + query, "warning");
   }
-  form.reset(); saveState(); render();
 }
 
-async function syncReports() {
-  if (!state.queuedReports.length) { toast("Nothing to sync."); return; }
-  let synced = 0;
-  for (const item of state.queuedReports) {
-    try { const [lat, lon] = (item.location || "23.727, 92.717").split(",").map(Number); await apiPost("/api/reports", { ...item, location: { lat, lon } }); synced++; } catch(e) {}
-  }
-  state.queuedReports = []; state.offline = false; saveState(); toast(`${synced} synced.`); render();
-}
-
-function fillLocation() {
-  const input = qs('input[name="location"]');
-  if (liveData.userLocation) {
-    input.value = `${liveData.userLocation.lat.toFixed(5)}, ${liveData.userLocation.lon.toFixed(5)}`;
-    toast("GPS location set.");
-  } else if (navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition(p => { input.value = `${p.coords.latitude.toFixed(5)}, ${p.coords.longitude.toFixed(5)}`; toast("GPS location set."); }, () => { input.value = "23.727, 92.717"; }, { timeout: 5000 });
-  } else { input.value = "23.727, 92.717"; }
-}
-
-function toggleEmergency() { state.emergency = !state.emergency; saveState(); toast(state.emergency ? "Emergency ON" : "Emergency OFF"); render(); }
-
-async function sendAlertToBackend() {
-  const score = computeRisk();
-  try {
-    const resp = await apiPost("/api/alerts/broadcast", { title: "NER Alert", message: `Risk: ${riskLabel(score)} (${score}/100). ${state.lastAIAnalysis?.recommendation || ""}`, severity: riskLabel(score).toUpperCase() });
-    addNotification("Alert Broadcast", `Risk ${riskLabel(score)} broadcast.`, classifyRisk(score), "System");
-    toast(resp.sent ? `Sent to ${resp.sent}` : "Alert broadcast.");
-  } catch (err) { toast(err.message); }
-}
-
-async function refreshLiveData({ quiet = false } = {}) {
-  liveData.backendChecked = true;
-  try {
-    const loc = liveData.userLocation || districtLocation();
-    const [health, w, f, sat, inc] = await Promise.all([
-      apiGet("/api/health"), apiGet(`/api/weather?lat=${loc.lat}&lon=${loc.lon}`), apiGet(`/api/flood?lat=${loc.lat}&lon=${loc.lon}`),
-      apiGet(`/api/satellite/latest?lat=${loc.lat}&lon=${loc.lon}&days=30`), apiGet("/api/incidents")
-    ]);
-    liveData.backendOnline = true; liveData.integrations = health.integrations || {};
-    liveData.satellite = sat;
-    state.incidents = (inc.items || []).map(i => ({ ...i }));
-
-    if (w.source === "open-meteo") {
-      state.weather.source = "open-meteo";
-      state.weather.temperature = Math.round(Number(w.temperature ?? state.weather.temperature));
-      state.weather.humidity = Math.round(Number(w.humidity ?? state.weather.humidity));
-      state.weather.rainfall = Math.round(Number(w.rainfall ?? state.weather.rainfall));
-      state.weather.wind = Math.round(Number(w.wind_speed ?? state.weather.wind));
-      state.weather.rainProbability = Math.round(Number(w.precipitation_probability ?? state.weather.rainProbability));
-      state.weather.warning = w.warning || state.weather.warning;
-      if (w.hourly?.length) state.weather.hourly = w.hourly.map(h => ({ hour: String(h.hour).padStart(2, "0"), rain: Math.round(Number(h.rain || 0)) }));
-    }
-    if (f.source === "open-meteo-flood") { liveData.flood = f; state.weather.floodIndex = Math.round(Number(f.risk_score || state.weather.floodIndex)); }
-
-    runAIAnalysis();
-    if (!quiet) toast("Live data loaded.");
-  } catch (err) { liveData.backendOnline = false; liveData.lastError = err.message; if (!quiet) toast("Backend offline: " + err.message); }
-  updateSystemHealth(); render();
-}
-
-function updateSystemHealth() {
-  const t = qs("#systemHealthTitle"), x = qs("#systemHealthText");
-  if (!t || !x) return;
-  if (!liveData.backendChecked) { t.textContent = "Checking"; x.textContent = "..."; return; }
-  if (!liveData.backendOnline) { t.textContent = "Offline"; x.textContent = "Using cached data."; return; }
-  const e = Object.entries(liveData.integrations).filter(([, v]) => v).map(([k]) => k.replaceAll("_", " "));
-  t.textContent = "Online"; x.textContent = e.length ? `Live: ${e.join(", ")}` : "Connected.";
-}
-
-function updateAuthPanel() {
-  const u = liveData.user;
-  qs("#authUser").textContent = u?.name || u?.email || "Citizen";
-  qs("#loginButton").classList.toggle("is-hidden", Boolean(u));
-  qs("#logoutButton").classList.toggle("is-hidden", !u);
-}
-
-function render() {
-  qs("#pageTitle").textContent = viewTitles[state.view] || "Disaster Monitor";
-  qs("#liveStatus").textContent = state.emergency ? "Emergency" : liveData.backendOnline ? "Online" : state.offline ? "Offline" : "Connecting...";
-  qs("#liveStatus").classList.toggle("emergency", state.emergency);
-  qsa(".nav-item").forEach(i => i.classList.toggle("active", i.dataset.view === state.view));
-  updateSystemHealth(); updateAuthPanel(); renderKpis(); renderView();
-}
-
-function init() {
-  window.addEventListener("ner:auth", e => {
-    const fbUser = e.detail.user;
-    if (fbUser) {
-      liveData.user = { email: fbUser.email, name: fbUser.name || fbUser.email, role: "citizen", district: "Aizawl" };
-      storage.set("ner:user", liveData.user);
-      showApp(); render(); refreshLiveData({}); connectWebSocket();
-      watchUserLocation(); startAutoRefresh();
-      toast("Signed in with Google.");
-    }
-  });
-  window.addEventListener("ner:toast", e => { if (e.detail?.message) toast(e.detail.message); });
-
-  const loggedIn = initLogin();
-  initLoginForm();
-
-  function attachNavHandlers() {
-    qsa(".nav-item").forEach(i => i.addEventListener("click", () => setView(i.dataset.view)));
-  }
-  attachNavHandlers();
-  window.addEventListener("hashchange", () => { const n = location.hash.replace("#", ""); if (n && n !== state.view) setView(n); });
-  qs("#loginButton").addEventListener("click", () => showLogin());
-  qs("#notifyButton").addEventListener("click", () => {
-    if ("Notification" in window && Notification.permission === "default") { Notification.requestPermission(); toast("Permission requested."); }
-    else toast("Enable notifications in browser settings.");
-  });
-
-  render();
-  refreshLiveData({ quiet: true });
-  connectWebSocket();
-  watchUserLocation();
-  startAutoRefresh();
-}
-
-init();
-
-// ========== LANDING PAGE HELPERS ==========
-function showLpLogin() {
-  document.getElementById("loginScreen").classList.add("visible");
-  document.getElementById("landingPage").classList.add("hidden");
-}
-
-// ========== DISASTER CANVAS ANIMATION ==========
-(function() {
-  var canvas = document.getElementById("disasterCanvas");
+// ========== LANDING PAGE CANVAS ==========
+function initDisasterCanvas() {
+  var canvas = qs("#disasterCanvas");
   if (!canvas) return;
   var ctx = canvas.getContext("2d");
   var W, H;
-  function resize() { W = canvas.width = canvas.offsetWidth; H = canvas.height = canvas.offsetHeight; }
+
+  function resize() {
+    W = canvas.width = canvas.offsetWidth;
+    H = canvas.height = canvas.offsetHeight;
+  }
+
   resize();
   window.addEventListener("resize", resize);
 
   var raindrops = [];
-  var lightningBolts = [];
-  var waves = [];
   var clouds = [];
   var particles = [];
 
   for (var i = 0; i < 120; i++) {
-    raindrops.push({ x: Math.random() * 2000, y: Math.random() * 1200, len: 10 + Math.random() * 20, speed: 4 + Math.random() * 6, opacity: 0.15 + Math.random() * 0.35 });
-  }
-  for (var i = 0; i < 6; i++) {
-    clouds.push({ x: Math.random() * 2000, y: 30 + Math.random() * 120, w: 100 + Math.random() * 200, h: 40 + Math.random() * 40, speed: 0.2 + Math.random() * 0.3, opacity: 0.3 + Math.random() * 0.4 });
-  }
-  for (var i = 0; i < 40; i++) {
-    particles.push({ x: Math.random() * 2000, y: Math.random() * 1200, vx: (Math.random() - 0.5) * 1.5, vy: (Math.random() - 0.5) * 1.5, r: 1 + Math.random() * 2, opacity: 0.2 + Math.random() * 0.5, color: Math.random() > 0.7 ? "#ff771c" : Math.random() > 0.5 ? "#4A90D9" : "#2E8B57" });
+    raindrops.push({
+      x: Math.random() * 2000,
+      y: Math.random() * 1200,
+      len: 10 + Math.random() * 20,
+      speed: 4 + Math.random() * 6,
+      opacity: 0.15 + Math.random() * 0.35
+    });
   }
 
+  for (var i = 0; i < 6; i++) {
+    clouds.push({
+      x: Math.random() * 2000,
+      y: 30 + Math.random() * 120,
+      w: 100 + Math.random() * 200,
+      h: 40 + Math.random() * 40,
+      speed: 0.2 + Math.random() * 0.3,
+      opacity: 0.3 + Math.random() * 0.4
+    });
+  }
+
+  for (var i = 0; i < 40; i++) {
+    particles.push({
+      x: Math.random() * 2000,
+      y: Math.random() * 1200,
+      vx: (Math.random() - 0.5) * 1.5,
+      vy: (Math.random() - 0.5) * 1.5,
+      r: 1 + Math.random() * 2,
+      opacity: 0.2 + Math.random() * 0.5,
+      color: Math.random() > 0.7 ? "rgba(255,119,28," : Math.random() > 0.5 ? "rgba(74,144,217," : "rgba(46,139,87,"
+    });
+  }
+
+  var lightningBolts = [];
   var lastLightning = 0;
   var flashOpacity = 0;
 
@@ -1027,7 +1553,6 @@ function showLpLogin() {
   function frame(t) {
     ctx.clearRect(0, 0, W, H);
 
-    // Background gradient
     var grad = ctx.createLinearGradient(0, 0, 0, H);
     grad.addColorStop(0, "#1a1a2e");
     grad.addColorStop(0.5, "#16213e");
@@ -1035,8 +1560,7 @@ function showLpLogin() {
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, W, H);
 
-    // Particles
-    particles.forEach(function(p) {
+    particles.forEach(function (p) {
       p.x += p.vx;
       p.y += p.vy;
       if (p.x < 0) p.x = W;
@@ -1045,24 +1569,21 @@ function showLpLogin() {
       if (p.y > H) p.y = 0;
       ctx.beginPath();
       ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-      ctx.fillStyle = p.color.replace(")", "," + p.opacity + ")").replace("rgb", "rgba");
-      ctx.fillStyle = p.color;
       ctx.globalAlpha = p.opacity;
+      ctx.fillStyle = p.color + p.opacity + ")";
       ctx.fill();
       ctx.globalAlpha = 1;
     });
 
-    // Clouds
-    clouds.forEach(function(c) {
+    clouds.forEach(function (c) {
       c.x += c.speed;
       if (c.x > W + 200) c.x = -200;
       drawCloud(c);
     });
 
-    // Rain
     ctx.strokeStyle = "rgba(180,200,230,0.4)";
     ctx.lineWidth = 1;
-    raindrops.forEach(function(r) {
+    raindrops.forEach(function (r) {
       ctx.globalAlpha = r.opacity;
       ctx.beginPath();
       ctx.moveTo(r.x, r.y);
@@ -1074,17 +1595,23 @@ function showLpLogin() {
     });
     ctx.globalAlpha = 1;
 
-    // Lightning
     if (t - lastLightning > 4000 + Math.random() * 8000) {
       lastLightning = t;
       var lx = W * 0.3 + Math.random() * W * 0.4;
-      lightningBolts.push({ x: lx, y: 0, endX: lx + (Math.random() - 0.5) * 100, endY: H * 0.5 + Math.random() * H * 0.3, depth: 4 + Math.floor(Math.random() * 2), born: t });
+      lightningBolts.push({
+        x: lx,
+        y: 0,
+        endX: lx + (Math.random() - 0.5) * 100,
+        endY: H * 0.5 + Math.random() * H * 0.3,
+        depth: 4 + Math.floor(Math.random() * 2),
+        born: t
+      });
       flashOpacity = 0.15;
     }
-    lightningBolts.forEach(function(b) {
+    lightningBolts.forEach(function (b) {
       drawLightning(b.x, b.y, b.endX, b.endY, b.depth);
     });
-    lightningBolts = lightningBolts.filter(function(b) { return t - b.born < 200; });
+    lightningBolts = lightningBolts.filter(function (b) { return t - b.born < 200; });
 
     if (flashOpacity > 0) {
       ctx.fillStyle = "rgba(255,255,255," + flashOpacity + ")";
@@ -1092,10 +1619,8 @@ function showLpLogin() {
       flashOpacity -= 0.005;
     }
 
-    // Waves (flood)
     drawWave(t);
 
-    // Mountain silhouettes
     ctx.beginPath();
     ctx.moveTo(0, H * 0.65);
     ctx.lineTo(W * 0.15, H * 0.4);
@@ -1111,7 +1636,6 @@ function showLpLogin() {
     ctx.fillStyle = "rgba(15,20,35,0.5)";
     ctx.fill();
 
-    // Risk pulse rings
     var pulseR = 30 + Math.sin(t * 0.002) * 15;
     ctx.beginPath();
     ctx.arc(W * 0.5, H * 0.45, pulseR, 0, Math.PI * 2);
@@ -1126,10 +1650,12 @@ function showLpLogin() {
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
+}
 
-  // Counter animation
-  window.addEventListener("scroll", function() {
-    document.querySelectorAll(".lp-stat-num[data-target]").forEach(function(el) {
+// ========== COUNTER ANIMATION ==========
+function initCounterAnimation() {
+  window.addEventListener("scroll", function () {
+    qsa(".lp-stat-num[data-target]").forEach(function (el) {
       if (el.dataset.animated) return;
       var rect = el.getBoundingClientRect();
       if (rect.top > window.innerHeight || rect.bottom < 0) return;
@@ -1149,4 +1675,107 @@ function showLpLogin() {
       requestAnimationFrame(step);
     });
   }, { passive: true });
-})();
+}
+
+// ========== INIT ==========
+function init() {
+  window.addEventListener("ner:auth", function (e) {
+    var fbUser = e.detail && e.detail.user;
+    if (fbUser) {
+      var user = {
+        uid: fbUser.uid,
+        email: fbUser.email,
+        name: fbUser.name || fbUser.displayName || fbUser.email,
+        role: "district_officer",
+        district: "Aizawl",
+        photoURL: fbUser.photoURL || ""
+      };
+      onSignInSuccess(user);
+    }
+  });
+
+  window.addEventListener("ner:toast", function (e) {
+    if (e.detail && e.detail.message) toast(e.detail.message);
+  });
+
+  initDisasterCanvas();
+  initCounterAnimation();
+
+  var googleBtn = qs("#googleLoginBtn");
+  if (googleBtn) {
+    googleBtn.addEventListener("click", function () {
+      handleGoogleSignIn();
+    });
+  }
+
+  var signInBackLink = qs(".signin-back-home");
+  if (signInBackLink) {
+    signInBackLink.addEventListener("click", function (e) {
+      e.preventDefault();
+      showLanding();
+    });
+  }
+
+  var topbarLogout = qs("#topbarLogoutBtn");
+  if (topbarLogout) {
+    topbarLogout.addEventListener("click", function () {
+      handleLogout();
+    });
+  }
+
+  var topbarSearch = qs("#topbarSearch");
+  if (topbarSearch) {
+    topbarSearch.addEventListener("keydown", function (e) {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        handleGlobalSearch(this.value);
+      }
+    });
+  }
+
+  var topbarEnableAlerts = qs("#topbarEnableAlerts");
+  if (topbarEnableAlerts) {
+    topbarEnableAlerts.addEventListener("click", function () {
+      if ("Notification" in window) {
+        Notification.requestPermission().then(function (perm) {
+          if (perm === "granted") {
+            toast("Browser notifications enabled");
+          } else {
+            toast("Notifications permission denied", "warning");
+          }
+        });
+      }
+    });
+  }
+
+  attachNavHandlers();
+
+  window.addEventListener("hashchange", function () {
+    var n = (location.hash || "#dashboard").replace("#", "");
+    if (n && n !== state.view && viewTitles[n]) {
+      setView(n);
+    }
+  });
+
+  var isLoggedIn = initApp();
+
+  if (isLoggedIn) {
+    render();
+    refreshAllData();
+    connectWebSocket();
+    watchUserLocation();
+    startAutoRefresh();
+  }
+
+  window.addEventListener("keydown", function (e) {
+    if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA" || e.target.tagName === "SELECT") return;
+    var keyMap = { d: "dashboard", m: "map", w: "weather", a: "alerts", r: "report", e: "emergency" };
+    var view = keyMap[e.key.toLowerCase()];
+    if (view) {
+      e.preventDefault();
+      setView(view);
+    }
+  });
+}
+
+init();
