@@ -23,14 +23,159 @@
       .leaflet-container { z-index:1; }
       #loginScreen { display:none !important; }
       #loginScreen.visible { display:flex !important; }
+      #landingPage.hidden { display:none !important; }
       .app-shell.hidden { display:none !important; }
       .app-shell.visible { display:grid !important; }
       @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(59,130,246,0.6); } 70% { box-shadow: 0 0 0 15px rgba(59,130,246,0); } 100% { box-shadow: 0 0 0 0 rgba(59,130,246,0); } }
     </style>
   </head>
   <body>
+    <!-- LANDING PAGE -->
+    <div id="landingPage" class="landing-page">
+      <header class="lp-header">
+        <div class="lp-nav">
+          <a class="brand" href="#">
+            <span class="brand-mark">NL</span>
+            <span><strong>NER Logistics</strong><small>Intelligence</small></span>
+          </a>
+          <div class="lp-nav-actions">
+            <button class="ghost-button" onclick="document.getElementById('loginScreen').classList.add('visible');document.getElementById('landingPage').classList.add('hidden')">Login</button>
+            <button class="button" onclick="document.getElementById('loginScreen').classList.add('visible');document.getElementById('landingPage').classList.add('hidden')">Get Started</button>
+          </div>
+        </div>
+      </header>
+
+      <section class="lp-hero">
+        <div class="lp-hero-content">
+          <p class="eyebrow">NER Disaster Monitoring System</p>
+          <h1 class="lp-title">Protecting Northeast India.<br>One Alert at a Time.</h1>
+          <p class="lp-subtitle">Real-time flood monitoring, landslide detection, and AI-powered disaster risk analysis for all 8 northeastern states. Stay safe, stay informed.</p>
+          <div class="lp-hero-actions">
+            <button class="button lp-cta" onclick="document.getElementById('loginScreen').classList.add('visible');document.getElementById('landingPage').classList.add('hidden')">Start Monitoring</button>
+            <a href="#features" class="ghost-button">Learn More</a>
+          </div>
+          <div class="lp-stats">
+            <div class="lp-stat"><strong>8</strong><small>States Covered</small></div>
+            <div class="lp-stat"><strong>24/7</strong><small>Live Monitoring</small></div>
+            <div class="lp-stat"><strong>AI</strong><small>Risk Analysis</small></div>
+          </div>
+        </div>
+        <div class="lp-hero-visual">
+          <div class="lp-map-preview">
+            <div class="lp-dot lp-dot-1"></div>
+            <div class="lp-dot lp-dot-2"></div>
+            <div class="lp-dot lp-dot-3"></div>
+            <div class="lp-dot lp-dot-4"></div>
+            <div class="lp-dot lp-dot-5"></div>
+            <div class="lp-pulse lp-pulse-1"></div>
+            <div class="lp-pulse lp-pulse-2"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="features" class="lp-features">
+        <p class="eyebrow" style="text-align:center">Features</p>
+        <h2 style="text-align:center;margin-bottom:32px">Everything You Need to Stay Safe</h2>
+        <div class="lp-feature-grid">
+          <article class="lp-feature-card">
+            <div class="lp-feature-icon">W</div>
+            <h3>Live Weather Data</h3>
+            <p>Real-time temperature, rainfall, wind speed, and humidity from Open-Meteo API. Updated every 5 minutes.</p>
+          </article>
+          <article class="lp-feature-card">
+            <div class="lp-feature-icon">F</div>
+            <h3>Flood Monitoring</h3>
+            <p>Hydrological flood index tracking across major rivers and tributaries in Northeast India.</p>
+          </article>
+          <article class="lp-feature-card">
+            <div class="lp-feature-icon">A</div>
+            <h3>AI Risk Engine</h3>
+            <p>Machine learning analyzes weather, satellite, and incident data to predict disaster risk levels.</p>
+          </article>
+          <article class="lp-feature-card">
+            <div class="lp-feature-icon">M</div>
+            <h3>Interactive Map</h3>
+            <p>Satellite imagery with real-time incident markers, flood zones, and risk overlays.</p>
+          </article>
+          <article class="lp-feature-card">
+            <div class="lp-feature-icon">R</div>
+            <h3>Citizen Reports</h3>
+            <p>Report floods, landslides, and road damage directly from your phone. Your reports power the AI.</p>
+          </article>
+          <article class="lp-feature-card">
+            <div class="lp-feature-icon">E</div>
+            <h3>Emergency Alerts</h3>
+            <p>Automatic notifications when risk levels change. Critical alerts delivered instantly.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="lp-how">
+        <p class="eyebrow" style="text-align:center">How It Works</p>
+        <h2 style="text-align:center;margin-bottom:32px">Three Steps to Safety</h2>
+        <div class="lp-steps">
+          <div class="lp-step">
+            <div class="lp-step-num">1</div>
+            <h3>Sign Up</h3>
+            <p>Create an account in seconds. Any email and password works.</p>
+          </div>
+          <div class="lp-step-arrow">→</div>
+          <div class="lp-step">
+            <div class="lp-step-num">2</div>
+            <h3>Allow Location</h3>
+            <p>Enable location access for personalized risk alerts for your area.</p>
+          </div>
+          <div class="lp-step-arrow">→</div>
+          <div class="lp-step">
+            <div class="lp-step-num">3</div>
+            <h3>Stay Informed</h3>
+            <p>Get real-time dashboards, AI analysis, and emergency notifications.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="lp-cta-section">
+        <h2>Ready to Monitor Disasters?</h2>
+        <p>Join citizens across Northeast India who are staying informed and staying safe.</p>
+        <button class="button lp-cta" onclick="document.getElementById('loginScreen').classList.add('visible');document.getElementById('landingPage').classList.add('hidden')">Get Started Free</button>
+      </section>
+
+      <footer class="lp-footer">
+        <div class="lp-footer-inner">
+          <div>
+            <a class="brand" href="#">
+              <span class="brand-mark">NL</span>
+              <span><strong>NER Logistics</strong><small>Intelligence</small></span>
+            </a>
+            <p class="muted" style="margin-top:8px;max-width:280px">Real-time disaster monitoring for Northeast India. Powered by AI.</p>
+          </div>
+          <div class="lp-footer-links">
+            <strong>Coverage</strong>
+            <small>Arunachal Pradesh</small>
+            <small>Assam</small>
+            <small>Manipur</small>
+            <small>Meghalaya</small>
+            <small>Mizoram</small>
+            <small>Nagaland</small>
+            <small>Sikkim</small>
+            <small>Tripura</small>
+          </div>
+          <div class="lp-footer-links">
+            <strong>Data Sources</strong>
+            <small>Open-Meteo API</small>
+            <small>Copernicus Sentinel</small>
+            <small>OpenStreetMap</small>
+            <small>OSRM Routing</small>
+          </div>
+        </div>
+        <div class="lp-footer-bottom">
+          <small>Built for disaster resilience in Northeast India</small>
+        </div>
+      </footer>
+    </div>
+
     <!-- LOGIN SCREEN -->
-    <div id="loginScreen" class="login-screen visible">
+    <div id="loginScreen" class="login-screen">
       <div class="login-card">
         <div class="brand-row">
           <span class="brand-icon">NL</span>

@@ -251,6 +251,7 @@ function runAIAnalysis() {
 function initLogin() {
   const loginScreen = qs("#loginScreen");
   const appShell = qs("#appShell");
+  const landingPage = qs("#landingPage");
   const savedUser = storage.get("ner:user", null);
 
   if (savedUser) {
@@ -258,24 +259,31 @@ function initLogin() {
     liveData.userLocation = storage.get("ner:userLocation", null);
     loginScreen.classList.remove("visible");
     loginScreen.classList.add("hidden");
+    if (landingPage) { landingPage.classList.add("hidden"); }
     appShell.classList.remove("hidden");
     appShell.classList.add("visible");
     return true;
   }
 
-  loginScreen.classList.add("visible");
+  loginScreen.classList.remove("visible");
+  loginScreen.classList.add("hidden");
   appShell.classList.add("hidden");
+  if (landingPage) { landingPage.classList.remove("hidden"); }
   return false;
 }
 
 function showApp() {
+  const landingPage = qs("#landingPage");
   qs("#loginScreen").classList.remove("visible");
   qs("#loginScreen").classList.add("hidden");
+  if (landingPage) { landingPage.classList.add("hidden"); }
   qs("#appShell").classList.remove("hidden");
   qs("#appShell").classList.add("visible");
 }
 
 function showLogin() {
+  const landingPage = qs("#landingPage");
+  if (landingPage) { landingPage.classList.add("hidden"); }
   qs("#loginScreen").classList.add("visible");
   qs("#loginScreen").classList.remove("hidden");
   qs("#appShell").classList.add("hidden");
@@ -318,7 +326,14 @@ function initLoginForm() {
     storage.removeItem("ner:user");
     if (ws) ws.close();
     if (state.autoRefreshTimer) clearInterval(state.autoRefreshTimer);
-    showLogin();
+    const landingPage = qs("#landingPage");
+    const loginScreen = qs("#loginScreen");
+    const appShell = qs("#appShell");
+    loginScreen.classList.remove("visible");
+    loginScreen.classList.add("hidden");
+    appShell.classList.remove("visible");
+    appShell.classList.add("hidden");
+    if (landingPage) { landingPage.classList.remove("hidden"); }
     toast("Logged out.");
   });
 
