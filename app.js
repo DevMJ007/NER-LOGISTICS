@@ -42,6 +42,7 @@ const state = {
   emergency: storage.get("ner:emergency", false),
   offline: false,
   incidents: [],
+  globalEvents: [],
   notifications: storage.get("ner:notifications", []),
   queuedReports: storage.get("ner:queuedReports", []),
   thresholds: storage.get("ner:thresholds", { moderate: 21, elevated: 41, high: 61, critical: 81, rainfall: 45, flood: 70 }),
@@ -216,7 +217,8 @@ var viewTitles = {
   alerts: "Alerts",
   report: "Report",
   emergency: "Emergency",
-  settings: "Settings"
+  settings: "Settings",
+  global: "Global Disasters"
 };
 
 // ========== NAVIGATION ==========
@@ -458,7 +460,8 @@ function renderView() {
     alerts: renderAlerts,
     report: renderReport,
     emergency: renderEmergency,
-    settings: renderSettings
+    settings: renderSettings,
+    global: renderGlobalView
   };
   var fn = views[state.view] || views.dashboard;
   root.innerHTML = fn();
@@ -911,6 +914,9 @@ function handleViewAction(action) {
     case "broadcast-alert":
       broadcastAlert();
       break;
+    case "refresh-global":
+      refreshGlobalEvents().then(function () { render(); toast("Global data refreshed"); });
+      break;
     case "logout":
       handleLogout();
       break;
@@ -1074,6 +1080,27 @@ function updateMapMarkers() {
       riskCircles.push(c);
     });
   }
+
+  if (state.globalEvents.length) {
+    state.globalEvents.forEach(function (e) {
+      if (!e.lat || !e.lon) return;
+      var icon = L.divIcon({
+        className: "",
+        html: '<div style="width:26px;height:26px;border-radius:50%;background:#7c3aed;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.3);display:grid;place-items:center;color:#fff;font-size:12px">' + e.categoryIcon + '</div>',
+        iconSize: [26, 26],
+        iconAnchor: [13, 13]
+      });
+      var marker = L.marker([e.lat, e.lon], { icon: icon }).addTo(leafletMap);
+      marker.bindPopup(
+        '<div style="min-width:180px"><strong>' + escapeHtml(e.title) + '</strong>' +
+        '<br><small style="color:#7c3aed;font-weight:600">' + escapeHtml(e.category) + '</small>' +
+        '<br><small>' + (e.date ? new Date(e.date).toLocaleString() : '') + '</small>' +
+        (e.description ? '<br><small>' + escapeHtml(e.description.substring(0, 100)) + '</small>' : '') +
+        '</div>'
+      );
+      incidentMarkers["global-" + e.id] = marker;
+    });
+  }
 }
 
 // ========== WEATHER DATA ==========
@@ -1098,6 +1125,110 @@ function refreshWeather(lat, lon) {
       storage.set("ner:weather", state.weather);
     })
     .catch(function () { });
+}
+
+// ========== GLOBAL DISASTERS (NASA EONET) ==========
+function refreshGlobalEvents() {
+  return fetch("https://eonet.gsfc.nasa.gov/api/v3/events?status=open&limit=50&days=7")
+    .then(function (r) { return r.json(); })
+    .then(function (data) {
+      var prevCount = state.globalEvents.length;
+      state.globalEvents = (data.events || []).map(function (e) {
+        var cat = (e.categories && e.categories[0]) || {};
+        var geo = (e.geometry && e.geometry[0]) || {};
+        var coords = geo.coordinates || [0, 0];
+        return {
+          id: e.id,
+          title: e.title,
+          category: cat.title || "Unknown",
+          categoryIcon: getGlobalEventIcon(cat.title),
+          date: e.geometry && e.geometry[0] ? e.geometry[0].date : "",
+          lon: coords[0],
+          lat: coords[1],
+          source: e.sources && e.sources[0] ? e.sources[0].url : "",
+          description: e.description || ""
+        };
+      });
+      if (prevCount === 0 && state.globalEvents.length > 0) {
+        state.globalEvents.slice(0, 3).forEach(function (e) {
+          addNotification(
+            "Global: " + e.title,
+            e.category + " — " + (e.date ? new Date(e.date).toLocaleString() : "Recent"),
+            e.category === "Earthquakes" || e.category === "Volcanoes" ? "critical" : "high",
+            "NASA EONET"
+          );
+        });
+      }
+      return state.globalEvents;
+    })
+    .catch(function () {
+      state.globalEvents = [];
+      return [];
+    });
+}
+
+function getGlobalEventIcon(category) {
+  var icons = {
+    "Wildfires": "\uD83D\uDD25",
+    "Severe Storms": "\uD83C\uDF29\uFE0F",
+    "Floods": "\uD83C\uDF0A",
+    "Earthquakes": "\uD83C\uDF0D",
+    "Volcanoes": "\uD83C\uDF0B",
+    "Sea and Lake Ice": "\u2744\uFE0F",
+    "Drought": "\u2600\uFE0F",
+    "Dust and Haze": "\uD83C\uDF2B\uFE0F",
+    "Landslides": "\uD83C\uDFD4\uFE0F",
+    "Manmade": "\uD83D\uDD25",
+    "Water Color": "\uD83D\uDCA7",
+    "Snow": "\u2744\uFE0F",
+    "Temperature Extremes": "\uD83C\uDF21\uFE0F"
+  };
+  return icons[category] || "\u26A0\uFE0F";
+}
+
+function renderGlobalView() {
+  var events = state.globalEvents;
+  if (!events.length) {
+    return '<div class="section-header"><div><h2>Global Disaster Monitor</h2><p style="color:var(--muted);font-size:0.85rem">Real-time natural events worldwide via NASA EONET</p></div>' +
+      '<button class="ghost-button" type="button" data-action="refresh-global">Refresh</button></div>' +
+      '<div class="panel" style="padding:60px;text-align:center;margin-top:20px"><p style="color:var(--muted)">No active global disasters found. Monitoring worldwide natural events...</p></div>';
+  }
+
+  var byCategory = {};
+  events.forEach(function (e) {
+    if (!byCategory[e.category]) byCategory[e.category] = [];
+    byCategory[e.category].push(e);
+  });
+
+  var categoryCards = Object.keys(byCategory).map(function (cat) {
+    var items = byCategory[cat];
+    var icon = items[0].categoryIcon;
+    var itemsHtml = items.slice(0, 4).map(function (e) {
+      var timeStr = e.date ? new Date(e.date).toLocaleDateString() + " " + new Date(e.date).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "Unknown";
+      return '<div class="road-item" style="cursor:pointer" onclick="panToGlobalEvent(' + e.lat + ',' + e.lon + ')">' +
+        '<div class="road-item-header"><h4>' + escapeHtml(e.title) + '</h4></div>' +
+        '<p>' + timeStr + (e.description ? ' — ' + escapeHtml(e.description.substring(0, 80)) : '') + '</p></div>';
+    }).join("");
+    if (items.length > 4) {
+      itemsHtml += '<p style="color:var(--muted);font-size:0.78rem;padding:8px">' + (items.length - 4) + ' more...</p>';
+    }
+
+    return '<div class="panel"><div class="panel-header"><div><p class="eyebrow">' + escapeHtml(cat) + '</p><h3>' + icon + ' ' + items.length + ' Event' + (items.length !== 1 ? 's' : '') + '</h3></div></div>' +
+      '<div class="panel-body"><div class="road-list">' + itemsHtml + '</div></div></div>';
+  }).join("");
+
+  return '<div class="section-header"><div><h2>Global Disaster Monitor</h2><p style="color:var(--muted);font-size:0.85rem">' + events.length + ' active events worldwide — NASA EONET</p></div>' +
+    '<button class="ghost-button" type="button" data-action="refresh-global">Refresh</button></div>' +
+    '<div class="grid-2" style="margin-top:16px">' + categoryCards + '</div>';
+}
+
+function panToGlobalEvent(lat, lon) {
+  setView("map");
+  setTimeout(function () {
+    if (leafletMap) {
+      leafletMap.setView([lat, lon], 6);
+    }
+  }, 300);
 }
 
 // ========== FLOOD DATA ==========
@@ -1336,6 +1467,12 @@ function refreshAllData() {
   refreshIncidents().then(function () {
     runAIAnalysis();
     render();
+  });
+
+  refreshGlobalEvents().then(function (events) {
+    if (events.length) {
+      render();
+    }
   });
 }
 
@@ -1768,7 +1905,7 @@ function init() {
 
   window.addEventListener("keydown", function (e) {
     if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA" || e.target.tagName === "SELECT") return;
-    var keyMap = { d: "dashboard", m: "map", w: "weather", a: "alerts", r: "report", e: "emergency" };
+    var keyMap = { d: "dashboard", m: "map", w: "weather", a: "alerts", r: "report", e: "emergency", g: "global" };
     var view = keyMap[e.key.toLowerCase()];
     if (view) {
       e.preventDefault();

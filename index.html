@@ -353,6 +353,11 @@
         <span class="sidebar-nav-label">Emergency</span>
         <span class="sidebar-nav-shortcut">E</span>
       </a>
+      <a href="#global" class="sidebar-nav-item" data-view="global" title="Global (G)">
+        <span class="sidebar-nav-icon">🌍</span>
+        <span class="sidebar-nav-label">Global</span>
+        <span class="sidebar-nav-shortcut">G</span>
+      </a>
     </nav>
     <div class="sidebar-health" id="sidebarHealth">
       <div class="sidebar-health-title">System Health</div>
@@ -512,7 +517,7 @@
   // Keyboard shortcuts for sidebar nav
   document.addEventListener('keydown', function(e) {
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-    const keyMap = { d: 'dashboard', m: 'map', w: 'weather', a: 'alerts', r: 'report', e: 'emergency' };
+    const keyMap = { d: 'dashboard', m: 'map', w: 'weather', a: 'alerts', r: 'report', e: 'emergency', g: 'global' };
     const view = keyMap[e.key.toLowerCase()];
     if (view) {
       e.preventDefault();
